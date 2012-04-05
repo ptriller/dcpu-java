@@ -107,7 +107,7 @@ public class Disassembler {
 			int a = (v & 0x3f0) >>> 4;
 			int b = (v & 0xfc00) >>> 10;
 
-			buffer.append(pad(Integer.toHexString(pc)));
+			buffer.append(pad(Integer.toHexString(pc - 1)));
 			buffer.append(":     ");
 			if(lastWasJump) buffer.append("   ");
 			lastWasJump = opcode.mnemonic.charAt(0) == 'i';
