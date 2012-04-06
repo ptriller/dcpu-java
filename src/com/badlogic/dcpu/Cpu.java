@@ -91,36 +91,7 @@ public class Cpu {
 	public Cpu(short[] mem) {
 		if(mem.length > RAM_SIZE) throw new RuntimeException("mem length must be < " + RAM_SIZE);
 		System.arraycopy(mem, 0, this.mem, 0, mem.length);
-	}
-	
-	public static short[] loadDump(String dumpFile) {
-		FileReader reader = null;
-		try {
-			reader = new FileReader(new File(dumpFile));
-			StringBuffer buffer = new StringBuffer();
-			int c = reader.read();
-			while (c != -1) {
-				buffer.append((char) c);
-				c = reader.read();
-			}
-			String[] tokens = buffer.toString().split("\\s");
-			short[] mem = new short[tokens.length];
-			for (int i = 0; i < tokens.length; i++) {
-				mem[i] = (short)Integer.parseInt(tokens[i], 16);
-			}
-			return mem;
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException("Couldn't load dump from file '"
-					+ dumpFile + "'", e);
-		} finally {
-			if (reader != null)
-				try {
-					reader.close();
-				} catch (Exception e) {
-				}
-		}
-	}
+	}	
 
 	private int load(int b) {		
 		switch(b) {

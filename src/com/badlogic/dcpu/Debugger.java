@@ -96,7 +96,7 @@ public class Debugger {
 						out.println("expected 'load <file-name>'");
 						continue;
 					}
-					cpu = new Cpu(Cpu.loadDump(tokens[2]));
+					cpu = new Cpu(Disassembler.loadDump(tokens[2]));
 					continue;
 				}
 				if(tokens[0].equals("quit") || tokens[0].equals("q")) {
@@ -111,7 +111,7 @@ public class Debugger {
 	}
 	
 	public static void main(String[] args) {
-		Cpu cpu = new Cpu(Cpu.loadDump("data/simple.dcpu"));		
+		Cpu cpu = new Cpu(Disassembler.loadDump("data/simple.dcpu"));		
 		Debugger debugger = new Debugger(cpu);
 		debugger.run();
 	}

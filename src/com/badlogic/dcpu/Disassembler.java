@@ -1,5 +1,8 @@
 package com.badlogic.dcpu;
 
+import java.io.File;
+import java.io.FileReader;
+
 import com.badlogic.dcpu.Cpu.Opcode;
 
 /**
@@ -142,8 +145,37 @@ public class Disassembler {
 		return buffer.toString();
 	}
 	
+	public static short[] loadDump(String dumpFile) {
+		FileReader reader = null;
+		try {
+			reader = new FileReader(new File(dumpFile));
+			StringBuffer buffer = new StringBuffer();
+			int c = reader.read();
+			while (c != -1) {
+				buffer.append((char) c);
+				c = reader.read();
+			}
+			String[] tokens = buffer.toString().split("\\s");
+			short[] mem = new short[tokens.length];
+			for (int i = 0; i < tokens.length; i++) {
+				mem[i] = (short)Integer.parseInt(tokens[i], 16);
+			}
+			return mem;
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Couldn't load dump from file '"
+					+ dumpFile + "'", e);
+		} finally {
+			if (reader != null)
+				try {
+					reader.close();
+				} catch (Exception e) {
+				}
+		}
+	}
+	
 	public static void main(String[] args) {
-		short[] dump = Cpu.loadDump("data/simple.dcpu");
+		short[] dump = Disassembler.loadDump("data/simple.dcpu");
 		System.out.println(new Disassembler().disassemble(dump, 0, dump.length)); 
 	}
 }
