@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 
+import com.badlogic.dcpu.Assembler.Arg;
+import com.badlogic.dcpu.Cpu.Opcode;
 import com.badlogic.dcpu.Cpu.Register;
 
 public class Debugger {
@@ -111,7 +113,23 @@ public class Debugger {
 	}
 	
 	public static void main(String[] args) {
-		Cpu cpu = new Cpu(Disassembler.loadDump("data/simple.dcpu"));		
+		Assembler asm = new Assembler();
+		asm.eop(Opcode.JSR, asm.label("main"));
+		
+		asm.markLabel("func");
+		asm.op(Opcode.SHR, Arg.reg(Register.X), Arg.lit(0x4));
+		asm.op(Opcode.SET, Arg.pc(), Arg.pop());
+		
+		asm.markLabel("main");
+		asm.op(Opcode.SET, Arg.reg(Register.X), Arg.lit(0xf0));
+		asm.eop(Opcode.JSR, asm.label("func"));
+		
+		
+		short[] dump = asm.getDump();
+		System.out.println(new Disassembler().disassemble(dump, 0, dump.length));
+		
+		Cpu cpu = new Cpu(dump);
+//		Cpu cpu = new Cpu(Disassembler.loadDump("data/simple.dcpu"));
 		Debugger debugger = new Debugger(cpu);
 		debugger.run();
 	}

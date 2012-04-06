@@ -12,9 +12,9 @@ import com.badlogic.dcpu.Cpu.Opcode;
  *
  */
 public class Disassembler {
-	String[] registerNames = { "a", "b", "c", "x", "y", "z", "i", "j" };
+	static final String[] registerNames = { "a", "b", "c", "x", "y", "z", "i", "j" };
 	
-	private int decodeArgument(int arg, int nextWord, StringBuffer buffer) {		
+	private static int decodeArgument(int arg, int nextWord, StringBuffer buffer) {		
 		switch(arg) {
 		case 0x0:
 		case 0x1:
@@ -89,7 +89,7 @@ public class Disassembler {
 		}		
 	}
 		
-	private String pad(String hex) {
+	private static String pad(String hex) {
 		if(hex.length() == 4) return hex;
 		StringBuffer buffer = new StringBuffer();
 		for(int i = 0; i < 4 - hex.length(); i++) buffer.append("0");
@@ -97,7 +97,7 @@ public class Disassembler {
 		return buffer.toString();
 	}
 	
-	public String disassemble(short[] mem, int offset, int len) {
+	public static String disassemble(short[] mem, int offset, int len) {
 		StringBuffer buffer = new StringBuffer();
 		
 		boolean lastWasJump = false;
@@ -125,6 +125,8 @@ public class Disassembler {
 				if(a == Opcode.JSR.extended) {
 					buffer.append("jsr ");
 					pc += decodeArgument(b, pc < end? mem[pc]: 0, buffer);
+				} else if(a == 0) {
+					buffer.append("halt");
 				} else {
 					buffer.append(pad(Integer.toHexString((short)v)));
 					buffer.append(" (unkown extended opcode)");
@@ -136,7 +138,7 @@ public class Disassembler {
 		return buffer.toString();
 	}
 	
-	public String disassembleInstr(short[] mem, int offset) {
+	public static String disassembleInstr(short[] mem, int offset) {
 		StringBuffer buffer = new StringBuffer();
 		int pc = offset;
 		int v = mem[pc++];
@@ -145,14 +147,27 @@ public class Disassembler {
 		Opcode opcode = Cpu.OPCODES[oc];
 		int a = (v & 0x3f0) >>> 4;
 		int b = (v & 0xfc00) >>> 10;
-
 		buffer.append(pad(Integer.toHexString(pc - 1)));
 		buffer.append(":     ");
-		buffer.append(opcode.mnemonic);
-		buffer.append(" ");
-		pc += decodeArgument(a, pc < mem.length? mem[pc]: 0, buffer);
-		buffer.append(", ");
-		pc += decodeArgument(b, pc < mem.length? mem[pc]: 0, buffer);
+
+		if(opcode != Opcode.EXTENDED) {
+			buffer.append(opcode.mnemonic);
+			buffer.append(" ");
+			pc += decodeArgument(a, pc < mem.length? mem[pc]: 0, buffer);
+			buffer.append(", ");
+			pc += decodeArgument(b, pc < mem.length? mem[pc]: 0, buffer);
+		} else {
+			if(a == Opcode.JSR.extended) {
+				buffer.append("jsr ");
+				pc += decodeArgument(b, pc < mem.length? mem[pc]: 0, buffer);
+			} else if(a == 0) {
+				buffer.append("halt");
+			} else {
+				buffer.append(pad(Integer.toHexString((short)v)));
+				buffer.append(" (unkown extended opcode)");
+			}
+			buffer.append("\n");	
+		}
 		return buffer.toString();
 	}
 	
@@ -187,6 +202,6 @@ public class Disassembler {
 	
 	public static void main(String[] args) {
 		short[] dump = Disassembler.loadDump("data/simple.dcpu");
-		System.out.println(new Disassembler().disassemble(dump, 0, dump.length)); 
+		System.out.println(Disassembler.disassemble(dump, 0, dump.length)); 
 	}
 }

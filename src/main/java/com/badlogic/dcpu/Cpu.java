@@ -74,11 +74,11 @@ public class Cpu {
 		
 		public void set(int val) {
 			if(isReg) reg[address] = (short)val;
-			else mem[address] = (short)val;
+			else mem[address & 0xffff] = (short)val;
 		}
 		
 		public int get() {
-			return isReg?reg[address]: mem[address];
+			return isReg?reg[address]: mem[address & 0xffff];
 		}
 	}
 	
@@ -95,6 +95,7 @@ public class Cpu {
 	private final StorageLocation storageLocation = new StorageLocation();
 	private int cycles;
 	private boolean skipNext;
+	private boolean halted;
 	
 	public Cpu(short[] mem) {
 		if(mem.length > RAM_SIZE) throw new RuntimeException("mem length must be < " + RAM_SIZE);
@@ -120,7 +121,7 @@ public class Cpu {
 		case 0xd:
 		case 0xe:
 		case 0xf:
-			return mem[reg[b - 0x8]];
+			return mem[reg[b - 0x8] & 0xffff];
 		case 0x10:
 		case 0x11:
 		case 0x12:
@@ -130,13 +131,13 @@ public class Cpu {
 		case 0x16:
 		case 0x17:
 			cycles++;
-			return mem[mem[reg[Register.PC.index]++] + reg[b - 0x10]];			
+			return mem[(mem[reg[Register.PC.index]++ & 0xffff] + reg[b - 0x10]) & 0xffff];			
 		case 0x18:
-			return mem[reg[Register.SP.index]++];
+			return mem[reg[Register.SP.index]++ & 0xffff];
 		case 0x19:
-			return mem[reg[Register.SP.index]];
+			return mem[reg[Register.SP.index] & 0xffff];
 		case 0x1a:
-			return mem[--reg[Register.SP.index]];
+			return mem[--reg[Register.SP.index] & 0xffff];
 		case 0x1b:
 			return reg[Register.SP.index];
 		case 0x1c:
@@ -145,10 +146,10 @@ public class Cpu {
 			return reg[Register.O.index];
 		case 0x1e:
 			cycles++;
-			return mem[mem[reg[Register.PC.index]++]];
+			return mem[mem[reg[Register.PC.index]++ & 0xffff] & 0xffff];
 		case 0x1f:
 			cycles++;
-			return mem[reg[Register.PC.index]++];
+			return mem[reg[Register.PC.index]++ & 0xffff];
 		default:
 			if(b >= 0x20 && b <= 0x3f) return b - 0x20;
 			throw new RuntimeException("Unkown load operator 0x" + Integer.toHexString(b));
@@ -189,7 +190,7 @@ public class Cpu {
 		case 0x17:
 			cycles++;
 			storageLocation.isReg = false;
-			storageLocation.address = mem[reg[Register.PC.index]++] + reg[a - 0x10];			
+			storageLocation.address = mem[reg[Register.PC.index]++ & 0xffff] + reg[a - 0x10];			
 			return;
 		case 0x18:
 			storageLocation.isReg = false;
@@ -201,7 +202,7 @@ public class Cpu {
 			return;
 		case 0x1a:
 			storageLocation.isReg = false;
-			storageLocation.address = --reg[Register.SP.index];
+			storageLocation.address = reg[Register.SP.index];
 			return;
 		case 0x1b:
 			storageLocation.isReg = true;
@@ -218,7 +219,7 @@ public class Cpu {
 		case 0x1e:
 			cycles++;
 			storageLocation.isReg = false;
-			storageLocation.address = mem[reg[Register.PC.index]++];
+			storageLocation.address = mem[reg[Register.PC.index]++ & 0xffff];
 			return;
 		case 0x1f:
 			cycles++;
@@ -228,8 +229,12 @@ public class Cpu {
 		}		
 	}
 	
+	public void runUntilHalted() {
+		while(!halted) tick();
+	}
+	
 	public void tick() {
-		int v = mem[reg[Register.PC.index]++];
+		int v = mem[reg[Register.PC.index]++ & 0xffff];
 		Opcode opcode = OPCODES[v & 0xf];
 		int a = (v & 0x3f0) >>> 4;
 		int b = (v & 0xfc00) >>> 10;
@@ -244,11 +249,12 @@ public class Cpu {
 		
 		switch(opcode) {
 		case EXTENDED:
-			// JSRE
-			if(a == 0x1) {
+			if(a == Opcode.JSR.extended) {
 				int val = load(b);
-				mem[Register.SP.index] = reg[Register.PC.index];
+				mem[(--reg[Register.SP.index]) & 0xffff] = reg[Register.PC.index];
 				reg[Register.PC.index] = (short)val;
+			} else if(a == 0) {
+				halted = true;
 			}
 			break;
 		case SET:
@@ -335,7 +341,7 @@ public class Cpu {
 	}
 	
 	public int getMemValue(int address) {
-		return mem[address];
+		return mem[address & 0xffff];
 	}
 
 	public int getCycles() {
