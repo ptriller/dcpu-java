@@ -1,1 +1,14 @@
-Java implementation of the dcpu-16 CPU for 0x10^c. Quick and dirty.
+Java implementation of the dcpu-16 CPU for 0x10^c. Contains:
+
+- Programmatic assembler
+- Disassembler
+- Command line debugger with stepping functionality
+- Emulator
+
+The code is not my finest work due to the limited amount of time
+i put into it. I appreciate any pull requests send in my direction.
+The programmatic assembler should serve as the basis for a high-level
+compiler for a variant of PL/i.
+
+All of the code is Apache 2 licensed, the sample in data/ is taken
+from Notch's dcpu-16 spec and is assume to be public domain.
