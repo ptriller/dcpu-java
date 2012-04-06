@@ -47,7 +47,7 @@ public class Disassembler {
 		case 0x16:
 		case 0x17:
 			buffer.append("[0x"); 
-			buffer.append(Integer.toHexString(nextWord));
+			buffer.append(Integer.toHexString(nextWord & 0xffff));
 			buffer.append("+");
 			buffer.append(registerNames[arg - 0x10]);
 			buffer.append("]");
@@ -72,12 +72,12 @@ public class Disassembler {
 			return 0;
 		case 0x1e:
 			buffer.append("[0x");
-			buffer.append(Integer.toHexString(nextWord));
+			buffer.append(Integer.toHexString(nextWord & 0xffff));
 			buffer.append("]");
 			return 1;
 		case 0x1f:
 			buffer.append("0x");
-			buffer.append(Integer.toHexString(nextWord));
+			buffer.append(Integer.toHexString(nextWord & 0xffff));
 			return 1;
 		default:
 			if(arg >= 0x20 && arg <= 0x3f) {
@@ -109,17 +109,28 @@ public class Disassembler {
 			Opcode opcode = Cpu.OPCODES[oc];
 			int a = (v & 0x3f0) >>> 4;
 			int b = (v & 0xfc00) >>> 10;
-
 			buffer.append(pad(Integer.toHexString(pc - 1)));
 			buffer.append(":     ");
-			if(lastWasJump) buffer.append("   ");
-			lastWasJump = opcode.mnemonic.charAt(0) == 'i';
-			buffer.append(opcode.mnemonic);
-			buffer.append(" ");
-			pc += decodeArgument(a, pc < end? mem[pc]: 0, buffer);
-			buffer.append(", ");
-			pc += decodeArgument(b, pc < end? mem[pc]: 0, buffer);
- 			buffer.append("\n");
+
+			if(opcode != Opcode.EXTENDED) {
+				if(lastWasJump) buffer.append("   ");
+				lastWasJump = opcode.mnemonic.charAt(0) == 'i';
+				buffer.append(opcode.mnemonic);
+				buffer.append(" ");
+				pc += decodeArgument(a, pc < end? mem[pc]: 0, buffer);
+				buffer.append(", ");
+				pc += decodeArgument(b, pc < end? mem[pc]: 0, buffer);
+	 			buffer.append("\n");
+			} else {
+				if(a == Opcode.JSR.extended) {
+					buffer.append("jsr ");
+					pc += decodeArgument(b, pc < end? mem[pc]: 0, buffer);
+				} else {
+					buffer.append(pad(Integer.toHexString((short)v)));
+					buffer.append(" (unkown extended opcode)");
+				}
+				buffer.append("\n");	
+			}
 		}
 		
 		return buffer.toString();

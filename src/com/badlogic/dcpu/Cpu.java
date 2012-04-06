@@ -1,7 +1,5 @@
 package com.badlogic.dcpu;
 
-import java.io.File;
-import java.io.FileReader;
 
 /**
  * Cpu emulation for <a href="http://0x10c.com/doc/dcpu-16.txt">dcpu-16</a>
@@ -10,7 +8,8 @@ import java.io.FileReader;
  */
 public class Cpu {
 	public static enum Opcode {
-		NON(0x0, 0),
+		EXTENDED(0x0, 0x0, 0),
+		JSR(0x0, 0x1, 2),
 		SET(0x1, 1),
 		ADD(0x2, 2),
 		SUB(0x3, 2),
@@ -28,11 +27,20 @@ public class Cpu {
 		IFB(0xf, 2);
 	 
 		public final int code;
+		public final int extended;
 		public final String mnemonic;
 		public final int cycles;
 
 		private Opcode(int code, int cycles) {
 			this.code = code;
+			this.extended = 0;
+			this.cycles = cycles;
+			this.mnemonic = this.name().toLowerCase();
+		}
+		
+		private Opcode(int code, int extended, int cycles) {
+			this.code = code;
+			this.extended = extended;
 			this.cycles = cycles;
 			this.mnemonic = this.name().toLowerCase();
 		}
@@ -77,7 +85,7 @@ public class Cpu {
 	
 	public static final int RAM_SIZE = 0x10000;
 	public static final int REGISTERS = 8 + 3;
-	public static final Opcode[] OPCODES = { Opcode.NON, Opcode.SET,
+	public static final Opcode[] OPCODES = { Opcode.EXTENDED, Opcode.SET,
 			Opcode.ADD, Opcode.SUB, Opcode.MUL, Opcode.DIV, Opcode.MOD,
 			Opcode.SHL, Opcode.SHR, Opcode.AND, Opcode.BOR, Opcode.XOR,
 			Opcode.IFE, Opcode.IFN, Opcode.IFG, Opcode.IFB }; 
@@ -235,7 +243,7 @@ public class Cpu {
 		}
 		
 		switch(opcode) {
-		case NON:
+		case EXTENDED:
 			// JSRE
 			if(a == 0x1) {
 				int val = load(b);
