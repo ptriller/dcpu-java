@@ -38,31 +38,64 @@ public class Cpu {
 		}
 	}
 	
+	public static enum Register {
+		A(0),
+		B(1),
+		C(2),
+		X(3),
+		Y(4),
+		Z(5),
+		I(6),
+		J(7),
+		PC(8),
+		SP(9),
+		O(10);
+		
+		public final int index;
+		public final String mnemonic;
+
+		private Register(int index) {
+			this.index = index;
+			this.mnemonic = this.name().toLowerCase();
+		}
+	}
+	
+	class StorageLocation {
+		boolean isReg;
+		int address;
+		
+		public void set(int val) {
+			if(isReg) reg[address] = (short)(val & 0xffff);
+			else mem[address] = (short)(val & 0xffff);
+		}
+		
+		public int get() {
+			return isReg?reg[address]: mem[address];
+		}
+	}
+	
 	
 	public static final int RAM_SIZE = 0x10000;
-	public static final int REGISTERS = 8;
+	public static final int REGISTERS = 8 + 3;
 	public static final Opcode[] OPCODES = { Opcode.NON, Opcode.SET,
 			Opcode.ADD, Opcode.SUB, Opcode.MUL, Opcode.DIV, Opcode.MOD,
 			Opcode.SHL, Opcode.SHR, Opcode.AND, Opcode.BOR, Opcode.XOR,
 			Opcode.IFE, Opcode.IFN, Opcode.IFG, Opcode.IFB }; 
 	
-	private final int mem[] = new int[RAM_SIZE];
-	private final int reg[] = new int[REGISTERS];
-	private int pc;
-	private int sp = 0xffff;
-	private int o;
+	private final short mem[] = new short[RAM_SIZE];
+	private final short reg[] = new short[REGISTERS];
+	private final StorageLocation storageLocation = new StorageLocation();
 	private int cycles;
 	private boolean skipNext;
 	
-	public Cpu(int[] mem) {
+	public Cpu(short[] mem) {
 		if(mem.length > RAM_SIZE) throw new RuntimeException("mem length must be < " + RAM_SIZE);
 		System.arraycopy(mem, 0, this.mem, 0, mem.length);
 	}
 	
-	public static int[] loadDump(String dumpFile) {
+	public static short[] loadDump(String dumpFile) {
 		FileReader reader = null;
 		try {
-			// yeah, let's ignore the encoding :)
 			reader = new FileReader(new File(dumpFile));
 			StringBuffer buffer = new StringBuffer();
 			int c = reader.read();
@@ -71,9 +104,9 @@ public class Cpu {
 				c = reader.read();
 			}
 			String[] tokens = buffer.toString().split("\\s");
-			int[] mem = new int[tokens.length];
+			short[] mem = new short[tokens.length];
 			for (int i = 0; i < tokens.length; i++) {
-				mem[i] = Integer.parseInt(tokens[i], 16);
+				mem[i] = (short)(Integer.parseInt(tokens[i], 16) & 0xffff);
 			}
 			return mem;
 		} catch (Exception e) {
@@ -118,32 +151,32 @@ public class Cpu {
 		case 0x16:
 		case 0x17:
 			cycles++;
-			return mem[mem[pc++] + reg[b - 0x10]];			
+			return mem[mem[reg[Register.PC.index]++] + reg[b - 0x10]];			
 		case 0x18:
-			return mem[sp++];
+			return mem[reg[Register.SP.index]++];
 		case 0x19:
-			return mem[sp];
+			return mem[reg[Register.SP.index]];
 		case 0x1a:
-			return mem[--sp];
+			return mem[--reg[Register.SP.index]];
 		case 0x1b:
-			return sp;
+			return reg[Register.SP.index];
 		case 0x1c:
-			return pc;
+			return reg[Register.PC.index];
 		case 0x1d:
-			return o;
+			return reg[Register.O.index];
 		case 0x1e:
 			cycles++;
-			return mem[mem[pc++]];
+			return mem[mem[reg[Register.PC.index]++]];
 		case 0x1f:
 			cycles++;
-			return mem[pc++];
+			return mem[reg[Register.PC.index]++];
 		default:
 			if(b >= 0x20 && b <= 0x3f) return b - 0x20;
 			throw new RuntimeException("Unkown load operator 0x" + Integer.toHexString(b));
 		}		
 	}
 	
-	private void store(int a, int val) {
+	private void store(int a) {
 		switch(a) {
 		case 0x0:
 		case 0x1:
@@ -153,7 +186,8 @@ public class Cpu {
 		case 0x5:
 		case 0x6:
 		case 0x7:
-			reg[a] = val;
+			storageLocation.isReg = true;
+			storageLocation.address = a;
 			return;
 		case 0x8:
 		case 0x9:
@@ -163,7 +197,8 @@ public class Cpu {
 		case 0xd:
 		case 0xe:
 		case 0xf:
-			mem[reg[a - 0x8]] = val;
+			storageLocation.isReg = false;
+			storageLocation.address = reg[a - 0x8];
 			return;
 		case 0x10:
 		case 0x11:
@@ -174,29 +209,37 @@ public class Cpu {
 		case 0x16:
 		case 0x17:
 			cycles++;
-			mem[mem[pc++] + reg[a - 0x10]] = val;
+			storageLocation.isReg = false;
+			storageLocation.address = mem[reg[Register.PC.index]++] + reg[a - 0x10];			
 			return;
 		case 0x18:
-			mem[sp++] = val;
+			storageLocation.isReg = false;
+			storageLocation.address = reg[Register.SP.index]++;
 			return;
 		case 0x19:
-			mem[sp] = val;
+			storageLocation.isReg = false;
+			storageLocation.address = reg[Register.SP.index];
 			return;
 		case 0x1a:
-			mem[--sp] = val;
+			storageLocation.isReg = false;
+			storageLocation.address = --reg[Register.SP.index];
 			return;
 		case 0x1b:
-			sp = val;
+			storageLocation.isReg = true;
+			storageLocation.address = Register.SP.index;
 			return;			
 		case 0x1c:
-			pc = val;
+			storageLocation.isReg = true;
+			storageLocation.address = Register.PC.index;
 			return;
 		case 0x1d:
-			o = val;
+			storageLocation.isReg = true;
+			storageLocation.address = Register.O.index;
 			return;
 		case 0x1e:
 			cycles++;
-			mem[mem[pc++]] = val;
+			storageLocation.isReg = false;
+			storageLocation.address = mem[reg[Register.PC.index]++];
 			return;
 		case 0x1f:
 			cycles++;
@@ -207,7 +250,7 @@ public class Cpu {
 	}
 	
 	public void tick() {
-		int v = mem[pc++];
+		int v = mem[reg[Register.PC.index]++];
 		Opcode opcode = OPCODES[v & 0xf];
 		int a = (v & 0x3f0) >>> 4;
 		int b = (v & 0xfc00) >>> 10;
@@ -215,51 +258,73 @@ public class Cpu {
 		cycles += opcode.cycles;
 		if(skipNext) {
 			cycles++;
-			if((b >= 0x10 && b <= 0x17) || b == 0x1e || b == 0x1f) pc++;
-			pc++;
+			if((b >= 0x10 && b <= 0x17) || b == 0x1e || b == 0x1f) reg[Register.PC.index]++;
 			skipNext = false;
+			return;
 		}
 		
 		switch(opcode) {
 		case NON:
+			// JSRE
+			if(a == 0x1) {
+				int val = load(b);
+				mem[Register.SP.index] = reg[Register.PC.index];
+				reg[Register.PC.index] = (short)(val & 0xffff);
+			}
 			break;
 		case SET:
-			store(a, load(b));
+			store(a);
+			storageLocation.set(load(b));
 			break;
 		case ADD:
-			int sum = load(a) + load(b);
-			store(a, sum);
+			store(a);
+			int val = storageLocation.get() + load(b);
+			storageLocation.set(val);
 			break;
 		case SUB:
-			sum = load(a) - load(b);
-			store(a, sum);
+			store(a);
+			val = storageLocation.get() - load(b);
+			storageLocation.set(val);
 			break;
 		case MUL:
-			int prod = load(a) * load(b);
-			store(a, prod);
+			store(a);
+			val = storageLocation.get() * load(b);
+			storageLocation.set(val);
 			break;
 		case DIV:
-			prod = load(a) / load(b);
-			store(a, prod);
+			store(a);
+			val = storageLocation.get() / load(b);
+			storageLocation.set(val);			
 			break;
 		case MOD:
-			prod = load(a) % load(b);
-			store(a, prod);
+			store(a);
+			val = storageLocation.get() % load(b);
+			storageLocation.set(val);
 			break;
 		case SHL:
-			store(a, load(a) << load(b));
+			store(a);
+			val = storageLocation.get() << load(b);
+			storageLocation.set(val);
 			break;
 		case SHR:
-			store(a, load(a) >>> load(b));
+			store(a);
+			val = storageLocation.get() >>> load(b);
+			storageLocation.set(val);
 			break;
 		case AND:
-			store(a, load(a) & load(b));
+			store(a);
+			val = storageLocation.get() & load(b);
+			storageLocation.set(val);
 			break;
 		case BOR:
-			store(a, load(a) | load(b));
+			store(a);
+			val = storageLocation.get() | load(b);
+			storageLocation.set(val);
 			break;
 		case XOR:
-			store(a, load(a) ^ load(b));
+			store(a);
+			val = storageLocation.get() ^ load(b);
+			storageLocation.set(val);
 			break;
 		case IFE:
 			if(!(load(a) == load(b))) skipNext = true;
@@ -278,6 +343,22 @@ public class Cpu {
 		}
 	}
 	
+	public int getRegValue(Register register) {
+		return reg[register.index];
+	}
+	
+	public int getMemValue(int address) {
+		return mem[address] & 0xffff;
+	}
+
+	public int getCycles() {
+		return cycles;
+	}
+	
+	public short[] getMemory() {	
+		return mem;
+	}
+
 	public static void main(String[] args) {
 		Cpu cpu = new Cpu(Cpu.loadDump("data/simple.dcpu"));
 		cpu.tick();
@@ -290,5 +371,9 @@ public class Cpu {
 		cpu.tick();
 		cpu.tick();
 		cpu.tick();
+	}
+
+	public boolean isNextSkipped() {
+		return skipNext;
 	}
 }

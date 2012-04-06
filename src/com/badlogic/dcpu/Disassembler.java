@@ -94,7 +94,7 @@ public class Disassembler {
 		return buffer.toString();
 	}
 	
-	public String disassemble(int[] mem, int offset, int len) {
+	public String disassemble(short[] mem, int offset, int len) {
 		StringBuffer buffer = new StringBuffer();
 		
 		boolean lastWasJump = false;
@@ -122,8 +122,28 @@ public class Disassembler {
 		return buffer.toString();
 	}
 	
+	public String disassembleInstr(short[] mem, int offset) {
+		StringBuffer buffer = new StringBuffer();
+		int pc = offset;
+		int v = mem[pc++];
+		int oc = v & 0xf;
+		if(oc > Cpu.OPCODES.length) throw new RuntimeException("Unkown opcode 0x" + Integer.toHexString(oc) + " at address " + (pc - 1));
+		Opcode opcode = Cpu.OPCODES[oc];
+		int a = (v & 0x3f0) >>> 4;
+		int b = (v & 0xfc00) >>> 10;
+
+		buffer.append(pad(Integer.toHexString(pc - 1)));
+		buffer.append(":     ");
+		buffer.append(opcode.mnemonic);
+		buffer.append(" ");
+		pc += decodeArgument(a, pc < mem.length? mem[pc]: 0, buffer);
+		buffer.append(", ");
+		pc += decodeArgument(b, pc < mem.length? mem[pc]: 0, buffer);
+		return buffer.toString();
+	}
+	
 	public static void main(String[] args) {
-		int[] dump = Cpu.loadDump("data/simple.dcpu");
+		short[] dump = Cpu.loadDump("data/simple.dcpu");
 		System.out.println(new Disassembler().disassemble(dump, 0, dump.length)); 
 	}
 }
