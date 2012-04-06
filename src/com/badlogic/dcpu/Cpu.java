@@ -65,8 +65,8 @@ public class Cpu {
 		int address;
 		
 		public void set(int val) {
-			if(isReg) reg[address] = (short)(val & 0xffff);
-			else mem[address] = (short)(val & 0xffff);
+			if(isReg) reg[address] = (short)val;
+			else mem[address] = (short)val;
 		}
 		
 		public int get() {
@@ -106,7 +106,7 @@ public class Cpu {
 			String[] tokens = buffer.toString().split("\\s");
 			short[] mem = new short[tokens.length];
 			for (int i = 0; i < tokens.length; i++) {
-				mem[i] = (short)(Integer.parseInt(tokens[i], 16) & 0xffff);
+				mem[i] = (short)Integer.parseInt(tokens[i], 16);
 			}
 			return mem;
 		} catch (Exception e) {
@@ -269,7 +269,7 @@ public class Cpu {
 			if(a == 0x1) {
 				int val = load(b);
 				mem[Register.SP.index] = reg[Register.PC.index];
-				reg[Register.PC.index] = (short)(val & 0xffff);
+				reg[Register.PC.index] = (short)val;
 			}
 			break;
 		case SET:
@@ -280,35 +280,43 @@ public class Cpu {
 			store(a);
 			int val = storageLocation.get() + load(b);
 			storageLocation.set(val);
+			reg[Register.O.index] = (short)(val >>> 16);
 			break;
 		case SUB:
 			store(a);
 			val = storageLocation.get() - load(b);
 			storageLocation.set(val);
+			reg[Register.O.index] = (short)(val >>> 16);
 			break;
 		case MUL:
 			store(a);
 			val = storageLocation.get() * load(b);
 			storageLocation.set(val);
+			reg[Register.O.index] = (short)(val >>> 16);
 			break;
 		case DIV:
 			store(a);
-			val = storageLocation.get() / load(b);
+			val = load(b);
+			if(val != 0) val = storageLocation.get() / val;
 			storageLocation.set(val);			
+			reg[Register.O.index] = (short)(val >>> 16);
 			break;
 		case MOD:
 			store(a);
-			val = storageLocation.get() % load(b);
-			storageLocation.set(val);
+			val = load(b);
+			if(val != 0) val = storageLocation.get() % val;
+			storageLocation.set(val);			
 			break;
 		case SHL:
 			store(a);
 			val = storageLocation.get() << load(b);
+			reg[Register.O.index] = (short)(val >>> 16);
 			storageLocation.set(val);
 			break;
 		case SHR:
 			store(a);
 			val = storageLocation.get() >>> load(b);
+			reg[Register.O.index] = (short)(val >>> 16);
 			storageLocation.set(val);
 			break;
 		case AND:
@@ -348,7 +356,7 @@ public class Cpu {
 	}
 	
 	public int getMemValue(int address) {
-		return mem[address] & 0xffff;
+		return mem[address];
 	}
 
 	public int getCycles() {
@@ -357,20 +365,6 @@ public class Cpu {
 	
 	public short[] getMemory() {	
 		return mem;
-	}
-
-	public static void main(String[] args) {
-		Cpu cpu = new Cpu(Cpu.loadDump("data/simple.dcpu"));
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
-		cpu.tick();
 	}
 
 	public boolean isNextSkipped() {
