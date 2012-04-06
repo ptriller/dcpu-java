@@ -11,4 +11,17 @@ The programmatic assembler should serve as the basis for a high-level
 compiler for a variant of PL/i.
 
 All of the code is Apache 2 licensed, the sample in data/ is taken
-from Notch's dcpu-16 spec and is assume to be public domain.
+from Notch's dcpu-16 spec and is assumed to be public domain.
+
+To see each piece at work, check the corresponding class (Disassembler,
+Assembler, Debugger, Cpu) and their respective main method.
+
+To create a project for your favorite IDE, use the provided Maven pom. 
+For people not familiar with maven:
+
+- Grab the latest Maven release from http://maven.apache.org/download.html
+- Unpack the archive, make sure the bin/ path is accessible from the cli.
+- For Eclipse, call 'mvn eclipse:eclipse' in the root directory of the
+  project.
+- Open Eclipse, File -> Import -> Existing Project into Workspace.
+- Click 'Browse', navigate to the project folder, click 'Finish'
