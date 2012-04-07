@@ -2,6 +2,8 @@
 package com.badlogic.crux;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -25,7 +27,7 @@ public class Lexer {
 		int c = in.read();
 
 		// eat whitespace
-		while (c == ' ' || c == '\t') {
+		while (c == ' ' || c == '\t' || (!reportEol && (c == '\n' || (c == '\r' && in.lookAhead('\n'))))) {
 			c = in.read();
 		}
 
@@ -37,15 +39,8 @@ public class Lexer {
 		}
 
 		// EOL
-		if (c == '\n' || (c == '\r' && in.lookAhead('\n'))) {
-			if (reportEol)
-				return new Token(TokenType.EOL, "unknown");
-			else {
-				c = in.read();
-				while (c == '\n' || (c == '\r' && in.lookAhead('\n'))) {
-					c = in.read();
-				}
-			}
+		if (reportEol && (c == '\n' || (c == '\r' && in.lookAhead('\n')))) {
+			return new Token(TokenType.EOL, "unknown");
 		}
 
 		// EOF
@@ -55,6 +50,12 @@ public class Lexer {
 		if (c == ')') return new Token(TokenType.R_PARA, ")");
 		if (c == '[') return new Token(TokenType.L_BRACK, "[");
 		if (c == ']') return new Token(TokenType.R_BRACK, "]");
+		if (c == ';') return new Token(TokenType.SEMICOLON, ";");
+		if (c == ':') return new Token(TokenType.COLON, ":");
+		if (c == ',') return new Token(TokenType.COMMA, ",");
+		if (c == '.') return new Token(TokenType.PERIOD, ".");
+		if (c == '#') return new Token(TokenType.HASH, "#");
+		
 
 		if (c == '+') return new Token(TokenType.PLUS, "+");
 		if (c == '-') return new Token(TokenType.MINUS, "-");
@@ -123,7 +124,7 @@ public class Lexer {
 					 (in.lookAhead >= 'A' && in.lookAhead <= 'F')) {
 				text.append((char)in.read());
 			}
-			return new Token(TokenType.HEX_NUMBER, text.toString());
+			return new Token(TokenType.NUMBER, text.toString());
 		}
 
 		// bin number
@@ -134,7 +135,7 @@ public class Lexer {
 			while (in.lookAhead == '0' || in.lookAhead == '1') {
 				text.append((char)in.read());
 			}
-			return new Token(TokenType.BIN_NUMBER, text.toString());
+			return new Token(TokenType.NUMBER, text.toString());
 		}
 
 		// number
@@ -181,6 +182,11 @@ public class Lexer {
 		R_BRACK, // ]
 		L_PARA, // (
 		R_PARA, // )
+		COMMA, // ,
+		SEMICOLON, // ;
+		COLON, // :
+		PERIOD, // .
+		HASH, // #
 
 		PLUS, // +
 		MINUS, // -
@@ -206,15 +212,13 @@ public class Lexer {
 
 		ASSIGN, // =
 		IDENTIFIER, // (alpha)(alpha|digit|[_])*
-		HEX_NUMBER, // ('0x' (digit|[abcdef])(digit|[abcdef])*) |
-		BIN_NUMBER, // ('0b' [01]([01])*) |
-		NUMBER, // (digit(digit)*)
+		NUMBER, //
 		LITERAL, // ('"'('\t'|'\r'|'\n'|'\\'|[.^"])*'"'
 
 		EOL, // ((\r\n) | (\n))
 		EOF, ERROR;
 	}
-
+	
 	public class Token {
 		public final TokenType type;
 		public final int line;
@@ -292,8 +296,9 @@ public class Lexer {
 		}
 	}
 
-	public static void main (String[] args) {
-		Lexer lexer = new Lexer(System.in, false);
+	public static void main (String[] args) throws FileNotFoundException {
+//		Lexer lexer = new Lexer(System.in, false);
+		Lexer lexer = new Lexer(new FileInputStream("data/simple.pl0"), false);
 		Token token = null;
 		do {
 			token = lexer.nextToken();
