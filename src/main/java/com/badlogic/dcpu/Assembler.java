@@ -233,7 +233,6 @@ public class Assembler {
 		asm.op(Opcode.SET, Arg.pc(), asm.label("crash"));
 		
 		short[] dump = asm.getDump();
-		Disassembler disasm = new Disassembler();
-		System.out.println(disasm.disassemble(dump, 0, dump.length));
+		System.out.println(Disassembler.disassemble(dump, 0, dump.length));
 	}
 }

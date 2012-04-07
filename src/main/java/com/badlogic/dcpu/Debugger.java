@@ -11,19 +11,17 @@ import com.badlogic.dcpu.Cpu.Register;
 
 public class Debugger {
 	private Cpu cpu;
-	private final Disassembler disassembler;
 	private final PrintStream out;
 	private final BufferedReader in;
 	
 	public Debugger(Cpu cpu) {
 		this.cpu = cpu;
-		this.disassembler = new Disassembler();
 		out = System.out;
 		in = new BufferedReader(new InputStreamReader(System.in));
 	}
 	
 	public void printNextInstr() {
-		out.println(this.disassembler.disassembleInstr(cpu.getMemory(), cpu.getRegValue(Register.PC)));
+		out.println(Disassembler.disassembleInstr(cpu.getMemory(), cpu.getRegValue(Register.PC)));
 	}
 	
 	private String pad(String hex) {
@@ -126,7 +124,7 @@ public class Debugger {
 		
 		
 		short[] dump = asm.getDump();
-		System.out.println(new Disassembler().disassemble(dump, 0, dump.length));
+		System.out.println(Disassembler.disassemble(dump, 0, dump.length));
 		
 		Cpu cpu = new Cpu(dump);
 //		Cpu cpu = new Cpu(Disassembler.loadDump("data/simple.dcpu"));
