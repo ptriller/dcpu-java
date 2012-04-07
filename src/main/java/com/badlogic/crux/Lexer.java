@@ -7,34 +7,41 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Lexer for Crux language.
  * @author mzechner */
 public class Lexer {
 	private final LookAheadReader in;
 	private final boolean reportEol;
+	private final boolean reportShift;
 
 	public Lexer (InputStream in) {
-		this(in, true);
+		this(in, false, true);
 	}
 
-	public Lexer (InputStream in, boolean reportEol) {
+	public Lexer (InputStream in, boolean reportEol, boolean reportShift) {
 		this.in = new LookAheadReader(in);
 		this.reportEol = reportEol;
+		this.reportShift = reportShift;
 	}
 
 	public Token nextToken () {
 		int c = in.read();
 
-		// eat whitespace
-		while (c == ' ' || c == '\t' || (!reportEol && (c == '\n' || (c == '\r' && in.lookAhead('\n'))))) {
-			c = in.read();
-		}
-
-		// eat (single line) comments
-		if (c == '/' && in.lookAhead('/')) {
-			while (c != '\n' && c != -1) {
+		while(c == ' ' || c == '\t' || c == '/' || c == '\n' || c == '\r') {
+			// eat whitespace 
+			while (c == ' ' || c == '\t' || (!reportEol && (c == '\n' || (c == '\r' && in.lookAhead('\n'))))) {
 				c = in.read();
+			}
+	
+			// eat (single line) comments
+			if (c == '/' && in.lookAhead('/')) {
+				while (c != '\n' && c != -1) {
+					c = in.read();
+				}
+				if(c != -1) c = in.read();
 			}
 		}
 
@@ -62,8 +69,8 @@ public class Lexer {
 		if (c == '/') return new Token(TokenType.DIV, "/");
 		if (c == '*') return new Token(TokenType.MUL, "*");
 		if (c == '%') return new Token(TokenType.MOD, "%");
-		if (c == '<' && in.lookAhead('<')) return new Token(TokenType.SHL, "<<");
-		if (c == '>' && in.lookAhead('>')) return new Token(TokenType.SHR, ">>");
+		if (reportShift && c == '<' && in.lookAhead('<')) return new Token(TokenType.SHL, "<<");
+		if (reportShift && c == '>' && in.lookAhead('>')) return new Token(TokenType.SHR, ">>");
 		if (c == '&') return new Token(TokenType.AND, "&");
 		if (c == '|') return new Token(TokenType.OR, "|");
 		if (c == '^') return new Token(TokenType.XOR, "^");
@@ -177,7 +184,7 @@ public class Lexer {
 		return new Token(TokenType.ERROR, "unexpected character '" + (char)c + "'");
 	}
 
-	enum TokenType {
+	public enum TokenType {
 		L_BRACK, // [
 		R_BRACK, // ]
 		L_PARA, // (
@@ -298,11 +305,12 @@ public class Lexer {
 
 	public static void main (String[] args) throws FileNotFoundException {
 //		Lexer lexer = new Lexer(System.in, false);
-		Lexer lexer = new Lexer(new FileInputStream("data/simple.pl0"), false);
+		Lexer lexer = new Lexer(new FileInputStream("data/simple.brainfuck"), false, false);
 		Token token = null;
 		do {
 			token = lexer.nextToken();
 			System.out.println(token);
-		} while (token != null && token.type != TokenType.EOF);
+		} while (token != null && token.type != TokenType.EOF && token.type != TokenType.ERROR);
+		if(token.type == TokenType.ERROR) System.out.println("error!");
 	}
 }

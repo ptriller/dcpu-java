@@ -164,7 +164,7 @@ public class PL0Parser extends Parser {
 	}
 	
 	public static void main (String[] args) throws FileNotFoundException {
-		Lexer lexer = new Lexer(new FileInputStream("data/simple.pl0"), false);
+		Lexer lexer = new Lexer(new FileInputStream("data/simple.pl0"));
 		Parser parser = new PL0Parser(lexer);
 		parser.parse();
 	}

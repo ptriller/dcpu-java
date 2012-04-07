@@ -13,11 +13,11 @@ import com.badlogic.crux.Lexer.TokenType;
  *
  */
 public abstract class Parser {
-	final Lexer lexer;
-	Token lastToken;
-	Token token;
-	Token lookAhead;
-	Set<String> keywords = new HashSet<String>();
+	protected final Lexer lexer;
+	protected Token lastToken;
+	protected Token token;
+	protected Token lookAhead;
+	protected Set<String> keywords = new HashSet<String>();
 	
 	public Parser(Lexer lexer, String[] keywords) {
 		this.lexer = lexer;
