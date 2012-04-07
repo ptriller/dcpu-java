@@ -43,6 +43,7 @@ public class Lexer {
 				}
 				if(c != -1) c = in.read();
 			}
+			if(c == '/' && in.lookAhead != '/') break;
 		}
 
 		// EOL
@@ -305,7 +306,7 @@ public class Lexer {
 
 	public static void main (String[] args) throws FileNotFoundException {
 //		Lexer lexer = new Lexer(System.in, false);
-		Lexer lexer = new Lexer(new FileInputStream("data/simple.brainfuck"), false, false);
+		Lexer lexer = new Lexer(new FileInputStream("data/simple.pl0"), false, true);
 		Token token = null;
 		do {
 			token = lexer.nextToken();
