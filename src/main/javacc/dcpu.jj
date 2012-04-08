@@ -1,0 +1,241 @@
+options {
+  LOOKAHEAD = 2;
+  CHOICE_AMBIGUITY_CHECK = 2;
+  OTHER_AMBIGUITY_CHECK = 1;
+  STATIC = false;
+  DEBUG_PARSER = true;
+  DEBUG_LOOKAHEAD = false;
+  DEBUG_TOKEN_MANAGER = false;
+  ERROR_REPORTING = true;
+  JAVA_UNICODE_ESCAPE = false;
+  UNICODE_INPUT = false;
+  IGNORE_CASE = false;
+  USER_TOKEN_MANAGER = false;
+  USER_CHAR_STREAM = false;
+  BUILD_PARSER = true;
+  BUILD_TOKEN_MANAGER = true;
+  SANITY_CHECK = true;
+  FORCE_LA_CHECK = true;
+}
+
+PARSER_BEGIN(AsmInternalParser)
+package com.badlogic.asm;
+
+import com.badlogic.dcpu.Assembler;
+import com.badlogic.dcpu.Cpu.Opcode;
+import com.badlogic.dcpu.Assembler.Arg;
+import com.badlogic.dcpu.Cpu.Register;
+
+class AsmInternalParser {
+
+  protected Assembler asm;
+
+  public AsmInternalParser(Assembler ass, java.io.InputStream stream, String encoding) {
+    this(stream, encoding);
+    this.asm=ass;
+  }
+
+  private Register getRegister(String ident) {
+    try {
+      return Register.valueOf(ident.toUpperCase());
+    } catch(IllegalArgumentException e) {
+    }
+    return null;
+  }
+
+  protected Arg processIdent(String ident) {
+    if(ident.equalsIgnoreCase("PC")) return Arg.pc();
+    if(ident.equalsIgnoreCase("SP")) return Arg.sp();
+    if(ident.equalsIgnoreCase("O")) return Arg.o();
+    if(ident.equalsIgnoreCase("PUSH")) return Arg.push();
+    if(ident.equalsIgnoreCase("POP")) return Arg.pop();
+    if(ident.equalsIgnoreCase("PEEK")) return Arg.peek();
+    Register register = getRegister(ident);
+    return register == null ? asm.label(ident) : Arg.reg(register);
+  }
+
+  void insertData(int i) {
+    asm.val((short)(i & 0xffff));
+  }
+  
+  void insertData(String s) {
+    String v = s.substring(1, s.length()-2).replaceAll("\\\"", "\"");
+    for (char c : v.toCharArray()) {
+      asm.val((short)c);
+    }
+  }
+
+  protected Arg processIndirect(String i1, int i2, String i3) throws ParseException {
+    if(i3 != null) {
+      Register register = getRegister(i3);
+      if(register == null) throw new ParseException("Only Registers can be used here.");
+      if(i1 != null) {
+        if(getRegister(i1) != null) new ParseException("Only Labels and Literals can be used here.");
+        return asm.label(register, i1);
+      } else {
+        return Arg.mem(register, i2);
+      }
+    } else {
+      if(i1 != null) {
+        Register register = getRegister(i1);
+        if(register != null) {
+          return Arg.reg(register);
+        } else {
+          return asm.label(i1);
+        } 
+      } else {
+        return Arg.mem(i2);
+      }
+    }
+  }
+}
+
+PARSER_END(AsmInternalParser)
+
+TOKEN:
+{
+		<JSR: ["J","j"]["S","s"]["R","r"]> |
+		<SET: ["S","s"]["E","e"]["T","t"]> |
+		<ADD: ["A","a"]["D","d"]["D","d"]> |
+		<SUB: ["S","s"]["U","u"]["B","b"]> |
+		<MUL: ["M","m"]["U","u"]["L","l"]> |
+		<DIV: ["D","d"]["I","i"]["V","v"]> |
+		<MOD: ["m","M"]["o","O"]["d","D"]> |
+		<SHL: ["s","S"]["h","H"]["l","L"]> |
+		<SHR: ["s","S"]["h","H"]["r","R"]> |
+		<AND: ["a","A"]["n","N"]["d","D"]> |
+		<BOR: ["b","B"]["o","O"]["R","r"]> |
+		<XOR: ["X","x"]["o","O"]["r","R"]> |
+		<IFE: ["i","I"]["f","F"]["E","e"]> |
+		<IFN: ["i","I"]["F","f"]["N","n"]> |
+		<IFG: ["i","I"]["f","F"]["g","G"]> |
+		<IFB: ["i","I"]["f","F"]["b","B"]> |
+		<DAT: ["D","d"]["A","a"]["T","t"]> |
+		<HEX: "0x" (["0"-"9","A"-"F","a"-"f"])+> |
+		<OCT:  "0" ([ "0"-"7" ])*> |
+		<DEC: [ "1"-"9" ](["0"-"9"])*> |	
+		<IDENT: ["A"-"Z", "a"-"z"](["A"-"Z", "a"-"z", "0"-"9", "_", "-" ])*> |
+		<STRING: "\"" (~["\""])+ "\"" >
+}
+
+/** Skip these characters, they are considered "white space" **/
+SKIP :                              
+{
+    " "
+    | "\t"
+    | <";" (~["\n","\r"])*>
+
+}
+
+
+void file() :
+{}
+{
+	((label())? (instruction())? ("\r"|"\n"))* <EOF>
+}
+
+
+void label() : 
+{ Token t; }
+{
+ ":" t=<IDENT> { asm.markLabel(t.image); }
+}
+
+
+void instruction() :
+{ 
+  Opcode opCode;
+  Arg argA;
+  Arg argB;
+}
+{
+	(opCode=exOp() argA=argument()) { asm.eop(opCode, argA); }
+	 | (opCode=op() argA=argument() "," argB=argument()) { asm.op(opCode, argA, argB); }
+	 | dat()
+}
+
+
+Arg argument():
+{
+	Arg r;
+}
+{
+	(r=simple()|r=indirect())
+	{ return r; }
+}
+
+
+Arg simple():
+{
+  int lit;
+  Token t;
+}
+{
+	t= <IDENT> { return processIdent(t.image); } |
+	lit=literal() { return Arg.lit(lit); }
+}
+
+
+Arg indirect():
+{
+	Token i1=null;
+	int i2 = -1;
+	Token i3=null;
+}
+{
+	("[" (i1=<IDENT>|i2=literal())  ("+" i3=<IDENT>)? "]")
+	{
+		return processIndirect(i1 != null ? i1.image : null ,i2,i3 != null ? i3.image : null);
+	}
+}
+
+int literal():
+{
+	Token t;
+}
+{
+	t=<HEX> { return Integer.parseInt(t.image.substring(2),16); } |
+	t=<OCT> { return Integer.parseInt(t.image,8); }  |
+	t=<DEC> { return Integer.parseInt(t.image,10); }
+}
+
+
+Opcode exOp():
+{}
+{
+	<JSR> { return Opcode.JSR; } 
+}
+
+Opcode op():
+{
+}
+{
+		<SET> { return Opcode.SET; } |
+		<ADD> { return Opcode.ADD; }|
+		<SUB> { return Opcode.SUB; }|
+		<MUL> { return Opcode.MUL; }|
+		<DIV> { return Opcode.DIV; }|
+		<MOD> { return Opcode.MOD; }|
+		<SHL> { return Opcode.SHL; }|
+		<SHR> { return Opcode.SHR; }|
+		<AND> { return Opcode.AND; }|
+		<BOR> { return Opcode.BOR; }|
+		<XOR> { return Opcode.XOR; }|
+		<IFE> { return Opcode.IFE; }|
+		<IFN> { return Opcode.IFN; }|
+		<IFG> { return Opcode.IFG; }|
+		<IFB> { return Opcode.IFB; }
+}
+
+
+void dat():
+{
+	int l;
+	Token t;
+}
+{
+	<DAT> (l=literal() { insertData(l); } | t=<STRING>{ insertData(t.image); }) ("," (l=literal() { insertData(l); } | t=<STRING> { insertData(t.image); }))*
+}
+
+
+
