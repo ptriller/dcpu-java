@@ -42,7 +42,7 @@ public class Assembler {
 	 * @param a argument a
 	 * @param b argument b
 	 */
-	void op(Opcode op, Arg a, Arg b) {
+	public void op(Opcode op, Arg a, Arg b) {
 		if(op.code != 0) {
 			int v = (b.bits << 10) | (a.bits << 4) | op.code;
 			mem.add((short)v);
@@ -59,7 +59,7 @@ public class Assembler {
 	 * @param op the {@link Opcode}
 	 * @param a argument a
 	 */
-	void eop(Opcode eop, Arg a) {
+	public void eop(Opcode eop, Arg a) {
 		if(eop.code == 0) {
 			int v = (a.bits << 10) | (eop.extended << 4);
 			mem.add((short)v);
@@ -91,7 +91,22 @@ public class Assembler {
 		}
 		return label;
 	}
-	
+
+	/**
+	 * Creates a label to be used with {@link #op(Opcode, Arg, Arg)} which
+	 * is pack patched in {@link #getDump()}.
+	 * @param name
+	 * @return
+	 */
+	public Arg label( Register reg, String name) {
+		Label label = labels.get(name);
+		if(label == null) {
+			label = new Label(0x1f, name, this);
+			labels.put(name, label);
+		}
+		return new ExLabel(0x10+reg.index, label);
+	}
+
 	/**
 	 * Marks the location of a label.
 	 * @param name the name of the label.
@@ -106,6 +121,20 @@ public class Assembler {
 		return label;
 	}
 	
+	public static class ExLabel extends Arg {
+		 final Label parent;
+		 ExLabel (int bits, Label parent) {
+			super(bits);
+			this.parent = parent;
+		}
+
+			@Override
+			void writeNextWord (ShortArray array) {
+				parent.writeNextWord(array);
+			}
+
+	}
+
 	public static class Label extends Arg {
 		final Assembler assembler;
 		final ShortArray addresses = new ShortArray();
