@@ -16,9 +16,26 @@ func test
 end
 
 func test2(num a, @num b): num
-
+   [a[]] =
+   var num b
+   var num c
+   [test[]](, )
+   
+   if  then
+      var num d
+      var num e
+      test(, )
+      e =
+      if then end
+   else 
+   	  test(, , , )
+   end 
+   
+   while do
+   
+   end
 end
-
 func main
+
 end
 

@@ -4,9 +4,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
 import com.badlogic.crux.AstNode.Assignment;
+import com.badlogic.crux.AstNode.Dereference;
+import com.badlogic.crux.AstNode.Expression;
 import com.badlogic.crux.AstNode.FunctionCall;
 import com.badlogic.crux.AstNode.FunctionDefinition;
 import com.badlogic.crux.AstNode.IfStatement;
+import com.badlogic.crux.AstNode.LValue;
+import com.badlogic.crux.AstNode.OffsetDereference;
 import com.badlogic.crux.AstNode.Program;
 import com.badlogic.crux.AstNode.ReturnStatement;
 import com.badlogic.crux.AstNode.ReturnType;
@@ -26,7 +30,7 @@ public class CruxParser extends Parser {
 
 	public CruxParser (Lexer lexer) {
 		super(lexer, new String[] {
-			"var", "num", "struct", "func", "end", "if", "then", "else", "while", "return"
+			"var", "num", "struct", "func", "end", "if", "then", "else", "while", "do", "return"
 		});
 	}
 	
@@ -117,11 +121,7 @@ public class CruxParser extends Parser {
 		// local vars and statements
 		while(!accept("end")) {
 			if(token.type == TokenType.EOF) error("expected end");
-			if(accept("var")) {
-				funcDef.localVars.add(varDef());
-			} else {
-				funcDef.statements.add(statement());
-			}
+			funcDef.statements.add(statement());
 		}
 		return funcDef;
 	}
@@ -147,18 +147,86 @@ public class CruxParser extends Parser {
 	public Statement statement() {
 		if("return".equals(token.text)) {
 			return returnStatement();
+		} else if("if".equals(token.text)) {
+			return ifStmt();
+		} else if("while".equals(token.text)) {
+			return whileStmt();
+		} else if(accept("var")) {
+			return varDef();
+		} else if(token.type == TokenType.IDENTIFIER ||
+			       "[".equals(token.text)) {
+			LValue lvalue = lvalue();
+			if(token.type == TokenType.ASSIGN) {
+				return assignment(lvalue);
+			} else if(token.type == TokenType.L_PARA) {
+				return functionCall(lvalue);
+			}
 		}
-		
+		error("Expected assignment, function call, if, while, or return");
 		return null;
 	}
 	
-	public Assignment assignment() {
+	public LValue lvalue() {
+		LValue lvalue = null;
+		if(token.type == TokenType.L_BRACK) {
+			lvalue = dereference();
+		} else if(token.type == TokenType.IDENTIFIER) {
+			lvalue = offsetDereference();
+		} else {
+			error("Expected [dereference] or identifier");
+		}
+		if(accept(TokenType.PERIOD)) {
+			lvalue.indirection = lvalue();
+		}
+		return lvalue;
+	}
+	
+	public LValue offsetDereference() {
+		OffsetDereference dereference = new OffsetDereference();
+		expect(TokenType.IDENTIFIER);
+		dereference.identifier = lastToken.text;
+		if(accept(TokenType.L_BRACK)) {
+			dereference.offsetExpression = expression();
+			expect(TokenType.R_BRACK);
+		}
+		return dereference;
+	}
+	
+	public LValue dereference() {
+		Dereference dereference = new Dereference();
+		expect(TokenType.L_BRACK);
+		dereference.lvalue = lvalue();
+		expect(TokenType.R_BRACK);
+		return dereference;
+	}
+	
+	public Assignment assignment(LValue lvalue) {
 		Assignment assignment = new Assignment();
+		assignment.lvalue = lvalue;
+		
+		expect(TokenType.ASSIGN);
+		assignment.rvalue = expression();
+		
 		return assignment;
 	}
 	
-	public FunctionCall functionCall() {
+	public FunctionCall functionCall(LValue lvalue) {
 		FunctionCall funcCall = new FunctionCall();
+		funcCall.lvalue = lvalue;
+		
+		expect(TokenType.L_PARA);
+		
+		// empty argument list
+		if(accept(TokenType.R_PARA)) return funcCall;
+		
+		// at least one argument, follow up arguments separated
+		// by comma.
+		funcCall.arguments.add(expression());
+		while(!accept(TokenType.R_PARA)) {
+			if(token.type == TokenType.EOF) error("Expected '('");
+			expect(TokenType.COMMA);
+			funcCall.arguments.add(expression());
+		}
 		
 		return funcCall;
 	}
@@ -166,18 +234,48 @@ public class CruxParser extends Parser {
 	public IfStatement ifStmt() {
 		IfStatement ifStmt= new IfStatement();
 		
+		expect("if");
+		ifStmt.condition = expression();
+		expect("then");
+		while(!("else".equals(token.text)) && !("end".equals(token.text))) {
+			ifStmt.trueStatements.add(statement());
+		}
+		
+		if(accept("else")) {
+			while(!accept("end")) {
+				if(token.type == TokenType.EOL) error("Expected 'end'");
+				ifStmt.trueStatements.add(statement());
+			}
+		} else {
+			expect("end");
+		}
 		return ifStmt;
 	}
 	
 	public WhileStatement whileStmt() {
 		WhileStatement whileStmt = new WhileStatement();
 		
+		expect("while");
+		whileStmt.condition = expression();
+		expect("do");
+		
+		while(!accept("end")) {
+			if(token.type == TokenType.EOF) error("Expected 'end'");
+			whileStmt.statements.add(statement());
+		}
+		
 		return whileStmt;
 	}
 	
 	public ReturnStatement returnStatement() {
 		expect("return");
+		// FIXME expression!
 		return new ReturnStatement();
+	}
+	
+	public Expression expression() {
+		Expression expression = new Expression();
+		return expression;
 	}
 	
 	public static void main (String[] args) throws FileNotFoundException {

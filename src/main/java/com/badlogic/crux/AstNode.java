@@ -32,7 +32,7 @@ public interface AstNode {
 	 * @author mzechner
 	 *
 	 */
-	public static class VariableDeclaration implements ProgramPart {
+	public static class VariableDeclaration implements ProgramPart, Statement {
 		public int pointerIndirections;
 		public String type;
 		public String identifier;
@@ -68,7 +68,6 @@ public interface AstNode {
 	public static class FunctionDefinition implements ProgramPart {
 		public String identifier;
 		public List<VariableDeclaration> arguments = new ArrayList<VariableDeclaration>();
-		public List<VariableDeclaration> localVars = new ArrayList<VariableDeclaration>();
 		public List<Statement> statements = new ArrayList<Statement>();
 		public ReturnType returnType;
 	}
@@ -87,17 +86,45 @@ public interface AstNode {
 	}
 	
 	public static class Assignment implements Statement {
+		public LValue lvalue;
+		public Expression rvalue;
+	}
+	
+	public abstract class LValue implements AstNode {
+		public LValue indirection;
+	}
+	
+	public static class Dereference extends LValue {
+		public LValue lvalue;
+		public LValue indirection;
+	}
+	
+	public static class OffsetDereference extends LValue {
+		public String identifier;
+		public Expression offsetExpression; // can be null
 	}
 	
 	public static class FunctionCall implements Statement {
+		public LValue lvalue;
+		public List<Expression> arguments = new ArrayList<Expression>();
 	}
 	
 	public static class IfStatement implements Statement {
+		public Expression condition;
+		public List<Statement> trueStatements = new ArrayList<Statement>();
+		public List<Statement> elseStatements = new ArrayList<Statement>();
 	}
 	
 	public static class WhileStatement implements Statement {
+		public Expression condition;
+		public List<Statement> statements = new ArrayList<Statement>();
 	}
 	
 	public static class ReturnStatement implements Statement {
+		Expression expression; // can be null
+	}
+	
+	public static class Expression implements AstNode {
+		
 	}
 }

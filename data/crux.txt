@@ -70,7 +70,7 @@ keywords: 'num', 'struct', 'func', 'end'
 
 <program>  ::= (                             # program consists of variable definitions
                  'var' <var-def> <initializer>?    # (global scope), type declarations, function
-               | <struct-decl>                 # definitions and statements.
+               | <struct-decl>                 # definitions
                | <func-def>
                )* EOF
             
@@ -89,31 +89,32 @@ keywords: 'num', 'struct', 'func', 'end'
 <struct-decl> ::= 'struct' IDENTIFIER <var-def>+ 'end'
 
 <func-def> ::= 'func' IDENTIFIER ( '(' <argument-list> ')' ? (':' <return-type>)?
-            ('var' <var-def> | <statement>)*
+            <statement>*
            'end'
 
 <return-type> ::= ('@')* ( 'num' | IDENTIFIER | 'func' // FIXME )
 
 <argument-list> ::= <var-def> ( ',' <var-def>)*
 
-<statement> ::= <assignment>
-              | <function-call>
+<statement> ::= <l-value> (<assignment> | <function-call>)
               | <if>
               | <while>
               | <return>
               
-<assignment> ::= <l-value> '=' <expression>
+<assignment> ::= '=' <expression>
 
-<function-call> ::= IDENTIFIER '(' (
-                                     ')' 
-                                   | <expression> (',' <expression>)* ')'
+<function-call> ::= '(' ( ')' | <expression> (',' <expression>)* ')'
+
+<l-value> ::= (<offset-dereference> | <dereference>) ( '.' <l-value>)
+
+<offset-dereference> ::= IDENTIFIER ('[' <expression ']')?
+
+<dereference> ::= '[' l_value ']'
                                    
 <if> ::= 'if' <expression> 'then' <statement>* 'else' <statement>* 'end'
 
 <while> ::= 'while' '(' <expression> ')' <statement>* 'end'
 
 <return> ::= 'return' <expression>
-
-<l_value> ::=
 
 <expression> ::=
