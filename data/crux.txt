@@ -1,0 +1,119 @@
+[SEMANTICS]
+- types
+	- num: 
+	   - 16-bit, unsigned (two's complement applies :p)
+	   - overflow results according to dcpu-16 specs.
+	   - default value 0
+	   - declaration: 'num identifier' 
+	   - assignment: 'identifier = <expression>', expression evaluates to a number
+	- struct:
+	   - a structured type that aggregates a fixed set of labeled objects (fields), 
+	     possibly of different types.
+	   - declaration: 
+	                  struct type_name
+	                     type identifier
+	                     type identifier
+	                  end
+	   - definition: 'type_name identifier'
+	   - all fields are initialized to their default values, (number = 0, ref = 0, struct
+	     initialized recursively).
+	   - memory layout of fields is sequential, in the order given in the source, e.g.
+	      
+	                          struct T1 
+	                             number x          0001
+	                             number y          0002
+	                             ref number z      0003
+	                          end 
+	      
+	                          struct T2
+	                             number a          0001
+	                             ref number b      0002
+	                             T1 c              0003 c.x
+	                          end                  0004 c.y
+	                                               0005 c.z
+	   - field access: 
+	      - identifier.fieldname
+	   - assignment:
+	      - a = b, mem copies b to a if they both have the same type, invalid otherwise
+	- reference: reference to a number or struct.
+	   - declaration: '@type identifier', #@ denotes the indirections, e.g. @@num means a poiner to a pointer to num.
+	   - assignment:
+	      - ref = <expression>, an absolute address, expression must evaluate to a number. 
+	      - ref = @<identifier>, sets ref to the address of the identifier
+	   - dereferencing (identifier is assumed to point to a ref type, e.g. @num mem):
+	      - identifier, the address stored in identifier
+	      - [identifier], the value at address ref, can be a number, struct or ref depending
+	        on the type of identifier
+	      - identifier[<expression>], the value at address ref + expression, can be a number, 
+	        struct or ref depending on the type.
+	      - [struct_identifier].field_identifier, returns the value of the field of a structs fields.
+	   - refs can not be part in expressions, pointer arithmetic is not supported, use the array
+	     indexing mechanism to achieve that if you need it.
+	- func: reference to a function.
+	   - initialization:
+	      - default value 0
+	   - assignment:
+	      - func = @functionname, 
+	   - dereferencing:
+	      - [func](arg1, arg2, arg3)
+- functions
+   - everything is passed by value, including structs (copied to stack).
+   - if a function defines a return type, return <value> is used to exit otherwise return.
+     Has to match the return type, otherwise it's an error.
+   - 
+
+[GRAMMAR]
+- non-terminals are specified via <termina-name>
+- terminals are specified via 'string' or ALLUPPERCASE
+
+keywords: 'num', 'struct', 'func', 'end'
+
+<program>  ::= (                             # program consists of variable definitions
+                 'var' <var-def> <initializer>?    # (global scope), type declarations, function
+               | <struct-decl>                 # definitions and statements.
+               | <func-def>
+               )* EOF
+            
+<var-def> ::= ('@')*                      # variable definition is either a number, struct 
+              (                           # or func, with optional reference count. 
+                'num' IDENTIFIER             
+              | IDENTIFIER IDENTIFIER          
+              | 'func' // FIXME
+              )
+              
+
+<initializer ::= '=' (                    # initializers are checked during AST traversal
+                       <expression>       # expression can only reference already defined vars
+                     | '[' (NUMBER|LITERAL) (',' (NUMBER|LITERAL)* ']'  # assignable to @num
+
+<struct-decl> ::= 'struct' IDENTIFIER <var-def>+ 'end'
+
+<func-def> ::= 'func' IDENTIFIER ( '(' <argument-list> ')' ? (':' <return-type>)?
+            ('var' <var-def> | <statement>)*
+           'end'
+
+<return-type> ::= ('@')* ( 'num' | IDENTIFIER | 'func' // FIXME )
+
+<argument-list> ::= <var-def> ( ',' <var-def>)*
+
+<statement> ::= <assignment>
+              | <function-call>
+              | <if>
+              | <while>
+              | <return>
+              
+<assignment> ::= <l-value> '=' <expression>
+
+<function-call> ::= IDENTIFIER '(' (
+                                     ')' 
+                                   | <expression> (',' <expression>)* ')'
+                                   
+<if> ::= 'if' <expression> 'then' <statement>* 'else' <statement>* 'end'
+
+<while> ::= 'while' '(' <expression> ')' <statement>* 'end'
+
+<return> ::= 'return' <expression>
+
+<l_value> ::=
+
+<expression> ::=

@@ -1,8 +1,10 @@
-package com.badlogic.crux;
+package com.badlogic.crux.brainfuck;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
+import com.badlogic.crux.Lexer;
+import com.badlogic.crux.Parser;
 import com.badlogic.crux.Lexer.TokenType;
 
 public class PL0Parser extends Parser {

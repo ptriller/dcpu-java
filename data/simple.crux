@@ -1,0 +1,24 @@
+struct Point 
+   num x
+   num y
+end
+
+struct Node
+   num value
+   @Node next
+end
+
+func test
+   var num localX
+   var num localY
+   
+   return
+end
+
+func test2(num a, @num b): num
+
+end
+
+func main
+end
+

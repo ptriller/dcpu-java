@@ -61,6 +61,7 @@ public class Lexer {
 		if (c == ',') return new Token(TokenType.COMMA, ",");
 		if (c == '.') return new Token(TokenType.PERIOD, ".");
 		if (c == '#') return new Token(TokenType.HASH, "#");
+		if (c == '@') return new Token(TokenType.AT, "@");
 		
 
 		if (c == '+') return new Token(TokenType.PLUS, "+");
@@ -193,6 +194,7 @@ public class Lexer {
 		COLON, // :
 		PERIOD, // .
 		HASH, // #
+		AT, // @
 
 		PLUS, // +
 		MINUS, // -
