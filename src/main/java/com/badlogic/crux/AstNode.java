@@ -3,6 +3,8 @@ package com.badlogic.crux;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.badlogic.crux.AstNode.LValue;
+
 public interface AstNode {
 	/**
 	 * A Program consists of {@link ProgramPart} instances, e.g.
@@ -33,7 +35,7 @@ public interface AstNode {
 	 *
 	 */
 	public static class VariableDeclaration implements ProgramPart, Statement {
-		public int pointerIndirections;
+		public int dereferences;
 		public String type;
 		public String identifier;
 		public Initializer initializer;
@@ -73,7 +75,7 @@ public interface AstNode {
 	}
 	
 	public static class ReturnType implements AstNode {
-		public int pointerIndirections;
+		public int references;
 		public String type;
 	}
 	
@@ -90,7 +92,7 @@ public interface AstNode {
 		public Expression rvalue;
 	}
 	
-	public abstract class LValue implements AstNode {
+	public abstract class LValue implements Factor {
 		public LValue indirection;
 	}
 	
@@ -124,7 +126,93 @@ public interface AstNode {
 		Expression expression; // can be null
 	}
 	
-	public static class Expression implements AstNode {
-		
+	public static interface Expression extends AstNode {
+	}
+	
+	public static class ComparisonExpression implements Expression {
+		public enum Comparator {
+			Less,
+			LessEqual,
+			Equal,
+			NotEqual,
+			GreaterEqual,
+			Greater
+		}
+		Comparator operator;
+		Expression left;
+		Expression right;
+	}
+	
+	public static class LogicalExpression implements Expression {
+		public enum LogicalOperator {
+			And,
+			Or
+		}
+		LogicalOperator operator;
+		Expression left;
+		Expression right;
+	}
+	
+	public static class AdditiveExpression implements Expression {
+		public enum AdditiveOperator {
+			Add,
+			Subtract
+		}
+		AdditiveOperator operator;
+		Expression left;
+		Expression right;
+	}
+	
+	public static class MultiplicativeExpression implements Expression {
+		public enum MultiplicativeOperator {
+			Multiply,
+			Divide,
+			SignedDivide,
+			Modulo
+		}
+		MultiplicativeOperator operator;
+		Expression left;
+		Expression right;
+	}
+	
+	public static class BinaryExpression implements Expression {
+		public enum BinaryOperator {
+			ShiftLeft,
+			ShiftRight,
+			Or,
+			And,
+			Xor
+		}
+		BinaryOperator operator;
+		Expression left;
+		Expression right;
+	}
+	
+	public static class UnaryExpression implements Expression {
+		public enum UnaryOperator {
+			Negate,
+			Not
+		}
+		UnaryOperator operator;
+		Expression factor;
+	}
+	
+	public interface Factor extends Expression {
+	}
+	
+	public static class Number implements Factor {
+		public String value;
+	}
+	
+	public static class Value implements Factor {
+		public int references;
+	}
+	
+	public static class FunctionReturnValue extends Value {
+		public FunctionCall functionCall;
+	}
+	
+	public static class RValue extends Value {
+		public LValue lvalue;
 	}
 }

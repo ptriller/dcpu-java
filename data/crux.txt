@@ -117,4 +117,20 @@ keywords: 'num', 'struct', 'func', 'end'
 
 <return> ::= 'return' <expression>
 
-<expression> ::=
+<expression> ::= <comparison-expr> 
+
+<comparison-expr> ::= <logical-expr> (('<'|'<='|'=='|'!='|'>='|'>') <logical-expr>)?
+
+<logical-expr> ::= <additive-expr> (('&&'|'||') <additive-expr>)*
+
+<additive-expr> ::= <multiplicative-expr> (('-'|'+') <multiplicative-expr>)*
+
+<multiplicative-expr ::= <binary-expr> (('*'|'/'|'\'|'%') <binary-expr>)*
+
+<binary-expr> ::= <unary-expr> (('<<'|'>>'|'|'|'&'|'^') <unary-expr>)*
+
+<unary> ::= ('-'|'!')? <factor>
+
+<factor> ::= ('(' <expression> ')' | NUMBER | <value>)
+
+<value> ::= ('@')* <l-value> (<function-call>)?

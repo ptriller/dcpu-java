@@ -16,22 +16,23 @@ func test
 end
 
 func test2(num a, @num b): num
-   [a[]] =
+   a = -1 - 1
+   [a[0]].a.c.b = 12
    var num b
    var num c
-   [test[]](, )
+   [test[12]](a, b)
    
-   if  then
+   if 10 then
       var num d
       var num e
-      test(, )
-      e =
-      if then end
+      test(10, 10)
+      e = -1 + test2(a, b) / d
+      if 10 then end
    else 
-   	  test(, , , )
+   	  test(abd, def.e , [a] , 0)
    end 
    
-   while do
+   while 10 do
    
    end
 end

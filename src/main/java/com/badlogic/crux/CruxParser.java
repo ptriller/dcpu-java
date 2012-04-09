@@ -3,19 +3,34 @@ package com.badlogic.crux;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
+import com.badlogic.crux.AstNode.AdditiveExpression;
+import com.badlogic.crux.AstNode.AdditiveExpression.AdditiveOperator;
 import com.badlogic.crux.AstNode.Assignment;
+import com.badlogic.crux.AstNode.BinaryExpression;
+import com.badlogic.crux.AstNode.BinaryExpression.BinaryOperator;
+import com.badlogic.crux.AstNode.ComparisonExpression;
+import com.badlogic.crux.AstNode.ComparisonExpression.Comparator;
 import com.badlogic.crux.AstNode.Dereference;
 import com.badlogic.crux.AstNode.Expression;
 import com.badlogic.crux.AstNode.FunctionCall;
 import com.badlogic.crux.AstNode.FunctionDefinition;
 import com.badlogic.crux.AstNode.IfStatement;
 import com.badlogic.crux.AstNode.LValue;
+import com.badlogic.crux.AstNode.LogicalExpression;
+import com.badlogic.crux.AstNode.LogicalExpression.LogicalOperator;
+import com.badlogic.crux.AstNode.MultiplicativeExpression;
+import com.badlogic.crux.AstNode.MultiplicativeExpression.MultiplicativeOperator;
+import com.badlogic.crux.AstNode.FunctionReturnValue;
+import com.badlogic.crux.AstNode.Number;
 import com.badlogic.crux.AstNode.OffsetDereference;
 import com.badlogic.crux.AstNode.Program;
+import com.badlogic.crux.AstNode.RValue;
 import com.badlogic.crux.AstNode.ReturnStatement;
 import com.badlogic.crux.AstNode.ReturnType;
 import com.badlogic.crux.AstNode.Statement;
 import com.badlogic.crux.AstNode.StructureDeclaration;
+import com.badlogic.crux.AstNode.UnaryExpression;
+import com.badlogic.crux.AstNode.UnaryExpression.UnaryOperator;
 import com.badlogic.crux.AstNode.VariableDeclaration;
 import com.badlogic.crux.AstNode.WhileStatement;
 import com.badlogic.crux.Lexer.TokenType;
@@ -65,7 +80,7 @@ public class CruxParser extends Parser {
 		VariableDeclaration varDecl = new VariableDeclaration();
 		
 		while(accept(TokenType.AT)) {
-			varDecl.pointerIndirections++;
+			varDecl.dereferences++;
 		}
 			
 		if(accept("num")) {
@@ -130,7 +145,7 @@ public class CruxParser extends Parser {
 		ReturnType returnType = new ReturnType();
 		
 		while(accept(TokenType.AT)) {
-			returnType.pointerIndirections++;
+			returnType.references++;
 		}
 			
 		if(accept("num")) {
@@ -173,7 +188,7 @@ public class CruxParser extends Parser {
 		} else if(token.type == TokenType.IDENTIFIER) {
 			lvalue = offsetDereference();
 		} else {
-			error("Expected [dereference] or identifier");
+			error("Expected value");
 		}
 		if(accept(TokenType.PERIOD)) {
 			lvalue.indirection = lvalue();
@@ -274,10 +289,147 @@ public class CruxParser extends Parser {
 	}
 	
 	public Expression expression() {
-		Expression expression = new Expression();
-		return expression;
+		return comparisonExpr();
 	}
 	
+	private Expression comparisonExpr () {
+		Expression expr = logicalExpr();
+		while(accept(TokenType.LESS) ||
+				accept(TokenType.LESSE) ||
+				accept(TokenType.EQUAL) ||
+				accept(TokenType.NOTEQUAL) ||
+				accept(TokenType.GREATERE) ||
+				accept(TokenType.GREATER)) {
+			ComparisonExpression comp = new ComparisonExpression();
+			
+			String op = lastToken.text;
+			if(op.equals("<")) comp.operator = Comparator.Less;
+			else if(op.equals("<=")) comp.operator = Comparator.LessEqual;
+			else if(op.equals("==")) comp.operator = Comparator.Equal;
+			else if(op.equals("!=")) comp.operator = Comparator.NotEqual;
+			else if(op.equals(">=")) comp.operator = Comparator.GreaterEqual;
+			else if(op.equals(">")) comp.operator = Comparator.Greater;
+			else error("Unknown logical operator '" + op + "', this should never happen");
+			
+			comp.left = expr;
+			comp.right = logicalExpr();
+			expr = comp;
+		}
+		return expr;
+	}
+
+	private Expression logicalExpr () {
+		Expression expr = additiveExpr();
+		while(accept(TokenType.LAND) ||
+			   accept(TokenType.LOR)) {
+			LogicalExpression log = new LogicalExpression();
+			log.operator = lastToken.text.equals("&&")?LogicalOperator.And: LogicalOperator.Or;
+			log.left = expr;
+			log.right = additiveExpr();
+			expr = log;
+		}
+		return expr;
+	}
+
+	private Expression additiveExpr () {
+		Expression expr = multiplicativeExpr();
+		while(accept(TokenType.PLUS) ||
+			   accept(TokenType.MINUS)) {
+			AdditiveExpression add = new AdditiveExpression();
+			add.operator = lastToken.text.equals("+")?AdditiveOperator.Add:AdditiveOperator.Subtract;
+			add.left = expr;
+			add.right = multiplicativeExpr();
+			expr = add;
+		}
+		return expr;
+	}
+
+	private Expression multiplicativeExpr () {
+		Expression expr = binaryExpr();
+		while(accept(TokenType.MUL) ||
+			   accept(TokenType.DIV) ||
+			   accept(TokenType.MOD)) {
+			MultiplicativeExpression mul = new MultiplicativeExpression();
+			String op = lastToken.text;
+			if("*".equals(op)) mul.operator = MultiplicativeOperator.Multiply;
+			else if("/".equals(op)) mul.operator = MultiplicativeOperator.Divide;
+			else if("%".equals(op)) mul.operator = MultiplicativeOperator.Modulo;
+			else error("Unexpected multiplicative operator '" + op + "', this should never happen");
+			mul.left = expr;
+			mul.right = binaryExpr();
+			expr = mul;
+		}
+		return expr;
+	}
+
+	private Expression binaryExpr () {
+		Expression expr = unaryExpr();
+		while(accept(TokenType.SHL) ||
+			   accept(TokenType.SHR) ||
+			   accept(TokenType.OR) ||
+			   accept(TokenType.AND) ||
+			   accept(TokenType.XOR)) {
+			BinaryExpression bin = new BinaryExpression();
+			String op = lastToken.text;
+			if("<<".equals(op)) bin.operator = BinaryOperator.ShiftLeft;
+			else if(">>".equals(op)) bin.operator = BinaryOperator.ShiftRight;
+			else if("|".equals(op)) bin.operator = BinaryOperator.Or;
+			else if("&".equals(op)) bin.operator = BinaryOperator.And;
+			else if("^".equals(op)) bin.operator = BinaryOperator.Xor;
+			else error("Unexpected binary operator '" + op + "', this should never happen");
+			bin.left = expr;
+			bin.right = unaryExpr();
+			expr = bin;
+		}
+		return expr;
+	}
+
+	private Expression unaryExpr () {
+		if(accept(TokenType.MINUS)) {
+			UnaryExpression unary = new UnaryExpression();
+			unary.operator = UnaryOperator.Negate;
+			unary.factor = factor();
+			return unary;
+		} else if(accept(TokenType.NOT)) {
+			UnaryExpression unary = new UnaryExpression();
+			unary.operator = UnaryOperator.Not;
+			unary.factor = factor();
+			return unary;
+		} else {
+			return factor();
+		}
+	}
+
+	private Expression factor () {
+		if(accept(TokenType.NUMBER)) {
+			Number number = new Number();
+			number.value = lastToken.text;
+			return number;
+		} else if(accept(TokenType.L_PARA)) {
+			Expression expr = expression();
+			expect(TokenType.R_PARA);
+			return expr;
+		}else {
+			int references = 0;
+			while(accept(TokenType.AT)) {
+				references++;
+			}
+			
+			LValue lvalue = lvalue();
+			if(token.type == TokenType.L_PARA) {
+				FunctionReturnValue returnValue = new FunctionReturnValue();
+				returnValue.references = references;
+				returnValue.functionCall = functionCall(lvalue);
+				return returnValue;
+			} else {
+				RValue rValue = new RValue();
+				rValue.references = references;
+				rValue.lvalue = lvalue;
+				return rValue;
+			}
+		}
+	}
+
 	public static void main (String[] args) throws FileNotFoundException {
 		Lexer lexer = new Lexer(new FileInputStream("data/simple.crux"), false, true);
 		CruxParser parser = new CruxParser(lexer);
