@@ -36,6 +36,7 @@ func test2(num a, @num b): num
    
    end
 end
+
 func main
 
 end
