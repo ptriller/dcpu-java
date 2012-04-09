@@ -24,6 +24,7 @@ import com.badlogic.crux.AstNode.LogicalExpression;
 import com.badlogic.crux.AstNode.LogicalExpression.LogicalOperator;
 import com.badlogic.crux.AstNode.MultiplicativeExpression;
 import com.badlogic.crux.AstNode.MultiplicativeExpression.MultiplicativeOperator;
+import com.badlogic.crux.AstNode.Literal;
 import com.badlogic.crux.AstNode.Number;
 import com.badlogic.crux.AstNode.OffsetDereference;
 import com.badlogic.crux.AstNode.Program;
@@ -456,6 +457,10 @@ public class CruxParser extends Parser {
 			Number number = new Number();
 			number.value = lastToken.text;
 			return number;
+		} else if(accept(TokenType.LITERAL)) {
+			Literal literal = new Literal();
+			literal.value = lastToken.text;
+			return literal;
 		} else if(accept(TokenType.L_PARA)) {
 			Expression expr = expression();
 			expect(TokenType.R_PARA);

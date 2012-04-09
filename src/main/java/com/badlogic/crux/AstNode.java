@@ -228,6 +228,10 @@ public interface AstNode {
 		public String value;
 	}
 	
+	public static class Literal implements Factor {
+		public String value;
+	}
+	
 	public static class Value implements Factor {
 		public int references;
 	}
