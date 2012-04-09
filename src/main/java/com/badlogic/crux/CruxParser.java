@@ -5,22 +5,25 @@ import java.io.FileNotFoundException;
 
 import com.badlogic.crux.AstNode.AdditiveExpression;
 import com.badlogic.crux.AstNode.AdditiveExpression.AdditiveOperator;
+import com.badlogic.crux.AstNode.AnonymousFunctionSignature;
 import com.badlogic.crux.AstNode.Assignment;
 import com.badlogic.crux.AstNode.BinaryExpression;
 import com.badlogic.crux.AstNode.BinaryExpression.BinaryOperator;
+import com.badlogic.crux.AstNode.BreakStatement;
 import com.badlogic.crux.AstNode.ComparisonExpression;
 import com.badlogic.crux.AstNode.ComparisonExpression.Comparator;
 import com.badlogic.crux.AstNode.Dereference;
 import com.badlogic.crux.AstNode.Expression;
 import com.badlogic.crux.AstNode.FunctionCall;
 import com.badlogic.crux.AstNode.FunctionDefinition;
+import com.badlogic.crux.AstNode.FunctionReturnValue;
+import com.badlogic.crux.AstNode.FunctionSignature;
 import com.badlogic.crux.AstNode.IfStatement;
 import com.badlogic.crux.AstNode.LValue;
 import com.badlogic.crux.AstNode.LogicalExpression;
 import com.badlogic.crux.AstNode.LogicalExpression.LogicalOperator;
 import com.badlogic.crux.AstNode.MultiplicativeExpression;
 import com.badlogic.crux.AstNode.MultiplicativeExpression.MultiplicativeOperator;
-import com.badlogic.crux.AstNode.FunctionReturnValue;
 import com.badlogic.crux.AstNode.Number;
 import com.badlogic.crux.AstNode.OffsetDereference;
 import com.badlogic.crux.AstNode.Program;
@@ -29,6 +32,8 @@ import com.badlogic.crux.AstNode.ReturnStatement;
 import com.badlogic.crux.AstNode.ReturnType;
 import com.badlogic.crux.AstNode.Statement;
 import com.badlogic.crux.AstNode.StructureDeclaration;
+import com.badlogic.crux.AstNode.Type;
+import com.badlogic.crux.AstNode.TypeDefinition;
 import com.badlogic.crux.AstNode.UnaryExpression;
 import com.badlogic.crux.AstNode.UnaryExpression.UnaryOperator;
 import com.badlogic.crux.AstNode.VariableDeclaration;
@@ -45,7 +50,7 @@ public class CruxParser extends Parser {
 
 	public CruxParser (Lexer lexer) {
 		super(lexer, new String[] {
-			"var", "num", "struct", "func", "end", "if", "then", "else", "while", "do", "return"
+			"var", "num", "struct", "func", "end", "if", "then", "else", "while", "do", "return", "break"
 		});
 	}
 	
@@ -80,15 +85,22 @@ public class CruxParser extends Parser {
 		VariableDeclaration varDecl = new VariableDeclaration();
 		
 		while(accept(TokenType.AT)) {
-			varDecl.dereferences++;
+			varDecl.typeDef.references++;
 		}
-			
+		
 		if(accept("num")) {
 			expect(TokenType.IDENTIFIER);
-			varDecl.type = "num";
+			varDecl.typeDef.type = Type.Number;
 			varDecl.identifier = lastToken.text;
+		} else if(accept("func")) {
+			varDecl.typeDef.type = Type.Function;
+			varDecl.typeDef.name = "func";
+			expect(TokenType.IDENTIFIER);
+			varDecl.identifier = lastToken.text;
+			varDecl.typeDef.funcSig = anonymousFuncSig();
 		} else if(accept(TokenType.IDENTIFIER)) {
-			varDecl.type = lastToken.text;
+			varDecl.typeDef.type = Type.Struct;
+			varDecl.typeDef.name = lastToken.text;
 			expect(TokenType.IDENTIFIER);
 			varDecl.identifier = lastToken.text;
 		} else {
@@ -112,26 +124,49 @@ public class CruxParser extends Parser {
 		return structDecl;
 	}
 	
+	public AnonymousFunctionSignature anonymousFuncSig() {
+		AnonymousFunctionSignature funcSig = new AnonymousFunctionSignature();
+		// argument list
+		if (accept(TokenType.L_PARA)) {
+			funcSig.argumentTypes.add(typeDef());
+			while (accept(TokenType.COMMA)) {
+				funcSig.argumentTypes.add(typeDef());
+			}
+			expect(TokenType.R_PARA);
+		}
+
+		// return type
+		if (accept(TokenType.COLON)) {
+			funcSig.returnType = returnType();
+		}
+		return null;
+	}
+	
+	public FunctionSignature funcSig() {
+		FunctionSignature funcSig = new FunctionSignature();
+		// argument list
+		if (accept(TokenType.L_PARA)) {
+			funcSig.arguments.add(varDef());
+			while (accept(TokenType.COMMA)) {
+				funcSig.arguments.add(varDef());
+			}
+			expect(TokenType.R_PARA);
+		}
+
+		// return type
+		if (accept(TokenType.COLON)) {
+			funcSig.returnType = returnType();
+		}
+		return null;
+	}
+	
 	public FunctionDefinition funcDef() {
 		FunctionDefinition funcDef = new FunctionDefinition();
 		
 		expect("func");
 		expect(TokenType.IDENTIFIER);
 		funcDef.identifier = lastToken.text;
-		
-		// argument list
-		if(accept(TokenType.L_PARA)) {
-			funcDef.arguments.add(varDef());
-			while(accept(TokenType.COMMA)) {
-				funcDef.arguments.add(varDef());
-			}
-			expect(TokenType.R_PARA); 
-		}
-		
-		// return type
-		if(accept(TokenType.COLON)) {
-			funcDef.returnType = returnType();
-		}
+		funcDef.signature = funcSig();
 		
 		// local vars and statements
 		while(!accept("end")) {
@@ -141,20 +176,34 @@ public class CruxParser extends Parser {
 		return funcDef;
 	}
 	
-	public ReturnType returnType() {
-		ReturnType returnType = new ReturnType();
+	public TypeDefinition typeDef() {
+		TypeDefinition typeDef = new TypeDefinition();
 		
 		while(accept(TokenType.AT)) {
-			returnType.references++;
+			typeDef.references++;
 		}
 			
 		if(accept("num")) {
-			returnType.type = "num";
+			typeDef.type = Type.Number;
+			typeDef.name = "num";
+		} else if(accept("func")) {
+			typeDef.type = Type.Function;
+			typeDef.name = "func";
+			typeDef.funcSig = anonymousFuncSig();
 		} else if(accept(TokenType.IDENTIFIER)) {
-			returnType.type = lastToken.text;
+			typeDef.type = Type.Struct;
+			typeDef.name = lastToken.text;
 		} else {
 			error("Expected 'num' or struct name");
 		}
+		
+		return typeDef;
+	}
+	
+	public ReturnType returnType() {
+		ReturnType returnType = new ReturnType();
+		
+		returnType.typeDef = typeDef();
 		
 		return returnType;
 	}
@@ -166,6 +215,8 @@ public class CruxParser extends Parser {
 			return ifStmt();
 		} else if("while".equals(token.text)) {
 			return whileStmt();
+		} else if(accept("break")) {
+			return new BreakStatement();
 		} else if(accept("var")) {
 			return varDef();
 		} else if(token.type == TokenType.IDENTIFIER ||

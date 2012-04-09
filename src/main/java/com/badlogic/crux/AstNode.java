@@ -27,6 +27,19 @@ public interface AstNode {
 	public interface ProgramPart extends AstNode {
 	}
 	
+	enum Type {
+		Number,
+		Struct,
+		Function
+	}
+	
+	public static class TypeDefinition implements AstNode {
+		public int references;
+		public Type type;
+		public String name;
+		public AnonymousFunctionSignature funcSig;
+	}
+	
 	/**
 	 * A variable declaration specifies the number of pointer
 	 * indirections, type and identifier for a variable. Optionally
@@ -35,10 +48,20 @@ public interface AstNode {
 	 *
 	 */
 	public static class VariableDeclaration implements ProgramPart, Statement {
-		public int dereferences;
-		public String type;
 		public String identifier;
+		public TypeDefinition typeDef = new TypeDefinition();
 		public Initializer initializer;
+	}
+	
+	public static class FunctionSignature implements AstNode {
+		public List<VariableDeclaration> arguments = new ArrayList<VariableDeclaration>();
+		public List<Statement> statements = new ArrayList<Statement>();
+		public ReturnType returnType;
+	}
+	
+	public static class AnonymousFunctionSignature implements AstNode {
+		public List<TypeDefinition> argumentTypes = new ArrayList<TypeDefinition>();
+		public ReturnType returnType;
 	}
 	
 	/**
@@ -69,14 +92,12 @@ public interface AstNode {
 	 */
 	public static class FunctionDefinition implements ProgramPart {
 		public String identifier;
-		public List<VariableDeclaration> arguments = new ArrayList<VariableDeclaration>();
+		public FunctionSignature signature = new FunctionSignature();
 		public List<Statement> statements = new ArrayList<Statement>();
-		public ReturnType returnType;
 	}
 	
 	public static class ReturnType implements AstNode {
-		public int references;
-		public String type;
+		public TypeDefinition typeDef = new TypeDefinition();
 	}
 	
 	/**
@@ -120,6 +141,9 @@ public interface AstNode {
 	public static class WhileStatement implements Statement {
 		public Expression condition;
 		public List<Statement> statements = new ArrayList<Statement>();
+	}
+	
+	public static class BreakStatement implements Statement {
 	}
 	
 	public static class ReturnStatement implements Statement {

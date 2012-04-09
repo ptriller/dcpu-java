@@ -78,9 +78,8 @@ keywords: 'num', 'struct', 'func', 'end'
               (                           # or func, with optional reference count. 
                 'num' IDENTIFIER             
               | IDENTIFIER IDENTIFIER          
-              | 'func' // FIXME
+              | 'func' IDENTIFIER <anonymous-func-sig>
               )
-              
 
 <initializer ::= '=' (                    # initializers are checked during AST traversal
                        <expression>       # expression can only reference already defined vars
@@ -88,17 +87,31 @@ keywords: 'num', 'struct', 'func', 'end'
 
 <struct-decl> ::= 'struct' IDENTIFIER <var-def>+ 'end'
 
-<func-def> ::= 'func' IDENTIFIER ( '(' <argument-list> ')' ? (':' <return-type>)?
+<func-def> ::= 'func' IDENTIFIER <func-sig>
             <statement>*
            'end'
-
-<return-type> ::= ('@')* ( 'num' | IDENTIFIER | 'func' // FIXME )
+           
+<func-sig> ::= ( '(' <argument-list> ')' ? (':' <return-type>)?
 
 <argument-list> ::= <var-def> ( ',' <var-def>)*
+
+<anonymous-func-sig> ::= ( '(' <anonymous-argument-list> ')' ? (':' <return-type>)?
+
+<anonymous-argument-list> ::= <type-def> ( ',' <type-def>)*
+
+<return-type> ::= <type-def>
+
+<type-def> ::= ('@')*                      # variable definition is either a number, struct 
+              (                           # or func, with optional reference count. 
+                'num'             
+              | IDENTIFIER          
+              | 'func' <anonymous-func-sig>
+              )
 
 <statement> ::= <l-value> (<assignment> | <function-call>)
               | <if>
               | <while>
+              | <break>
               | <return>
               
 <assignment> ::= '=' <expression>
@@ -131,6 +144,6 @@ keywords: 'num', 'struct', 'func', 'end'
 
 <unary> ::= ('-'|'!')? <factor>
 
-<factor> ::= ('(' <expression> ')' | NUMBER | <value>)
+<factor> ::= ('(' <expression> ')' | NUMBER | LITERAL | <value>)
 
 <value> ::= ('@')* <l-value> (<function-call>)?

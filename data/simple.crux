@@ -8,11 +8,20 @@ struct Node
    @Node next
 end
 
+var num globalX
+var num globalY
+var func globalFuncPtr (num, @Node): num
+
 func test
    var num localX
    var num localY
+   var func localFuncPtr (num, @Node): num
    
    return
+end
+
+func test3 (func test (func)) 
+
 end
 
 func test2(num a, @num b): num
