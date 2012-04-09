@@ -3,8 +3,6 @@ package com.badlogic.crux;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.badlogic.crux.AstNode.LValue;
-
 public interface AstNode {
 	/**
 	 * A Program consists of {@link ProgramPart} instances, e.g.
@@ -113,20 +111,6 @@ public interface AstNode {
 		public Expression rvalue;
 	}
 	
-	public abstract class LValue implements Factor {
-		public LValue indirection;
-	}
-	
-	public static class Dereference extends LValue {
-		public LValue lvalue;
-		public LValue indirection;
-	}
-	
-	public static class OffsetDereference extends LValue {
-		public String identifier;
-		public Expression offsetExpression; // can be null
-	}
-	
 	public static class FunctionCall implements Statement {
 		public LValue lvalue;
 		public List<Expression> arguments = new ArrayList<Expression>();
@@ -153,54 +137,22 @@ public interface AstNode {
 	public static interface Expression extends AstNode {
 	}
 	
-	public static class ComparisonExpression implements Expression {
-		public enum Comparator {
+	public static class BinaryExpression implements Expression {
+		public enum BinaryOperator {
 			Less,
 			LessEqual,
 			Equal,
 			NotEqual,
 			GreaterEqual,
-			Greater
-		}
-		Comparator operator;
-		Expression left;
-		Expression right;
-	}
-	
-	public static class LogicalExpression implements Expression {
-		public enum LogicalOperator {
-			And,
-			Or
-		}
-		LogicalOperator operator;
-		Expression left;
-		Expression right;
-	}
-	
-	public static class AdditiveExpression implements Expression {
-		public enum AdditiveOperator {
+			Greater,
+			LogicalAnd,
+			LogicalOr,
 			Add,
-			Subtract
-		}
-		AdditiveOperator operator;
-		Expression left;
-		Expression right;
-	}
-	
-	public static class MultiplicativeExpression implements Expression {
-		public enum MultiplicativeOperator {
+			Subtract,
 			Multiply,
 			Divide,
 			SignedDivide,
-			Modulo
-		}
-		MultiplicativeOperator operator;
-		Expression left;
-		Expression right;
-	}
-	
-	public static class BinaryExpression implements Expression {
-		public enum BinaryOperator {
+			Modulo,
 			ShiftLeft,
 			ShiftRight,
 			Or,
@@ -230,6 +182,19 @@ public interface AstNode {
 	
 	public static class Literal implements Factor {
 		public String value;
+	}
+	
+	public abstract class LValue implements Factor {
+		public LValue fieldAccess;
+	}
+	
+	public static class Dereference extends LValue {
+		public LValue lvalue;
+	}
+	
+	public static class OffsetDereference extends LValue {
+		public String identifier;
+		public Expression offsetExpression; // can be null
 	}
 	
 	public static class Value implements Factor {

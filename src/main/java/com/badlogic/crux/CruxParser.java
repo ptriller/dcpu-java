@@ -3,15 +3,11 @@ package com.badlogic.crux;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
-import com.badlogic.crux.AstNode.AdditiveExpression;
-import com.badlogic.crux.AstNode.AdditiveExpression.AdditiveOperator;
 import com.badlogic.crux.AstNode.AnonymousFunctionSignature;
 import com.badlogic.crux.AstNode.Assignment;
 import com.badlogic.crux.AstNode.BinaryExpression;
 import com.badlogic.crux.AstNode.BinaryExpression.BinaryOperator;
 import com.badlogic.crux.AstNode.BreakStatement;
-import com.badlogic.crux.AstNode.ComparisonExpression;
-import com.badlogic.crux.AstNode.ComparisonExpression.Comparator;
 import com.badlogic.crux.AstNode.Dereference;
 import com.badlogic.crux.AstNode.Expression;
 import com.badlogic.crux.AstNode.FunctionCall;
@@ -20,10 +16,6 @@ import com.badlogic.crux.AstNode.FunctionReturnValue;
 import com.badlogic.crux.AstNode.FunctionSignature;
 import com.badlogic.crux.AstNode.IfStatement;
 import com.badlogic.crux.AstNode.LValue;
-import com.badlogic.crux.AstNode.LogicalExpression;
-import com.badlogic.crux.AstNode.LogicalExpression.LogicalOperator;
-import com.badlogic.crux.AstNode.MultiplicativeExpression;
-import com.badlogic.crux.AstNode.MultiplicativeExpression.MultiplicativeOperator;
 import com.badlogic.crux.AstNode.Literal;
 import com.badlogic.crux.AstNode.Number;
 import com.badlogic.crux.AstNode.OffsetDereference;
@@ -243,7 +235,7 @@ public class CruxParser extends Parser {
 			error("Expected value");
 		}
 		if(accept(TokenType.PERIOD)) {
-			lvalue.indirection = lvalue();
+			lvalue.fieldAccess = lvalue();
 		}
 		return lvalue;
 	}
@@ -352,15 +344,15 @@ public class CruxParser extends Parser {
 				accept(TokenType.NOTEQUAL) ||
 				accept(TokenType.GREATERE) ||
 				accept(TokenType.GREATER)) {
-			ComparisonExpression comp = new ComparisonExpression();
+			BinaryExpression comp = new BinaryExpression();
 			
 			String op = lastToken.text;
-			if(op.equals("<")) comp.operator = Comparator.Less;
-			else if(op.equals("<=")) comp.operator = Comparator.LessEqual;
-			else if(op.equals("==")) comp.operator = Comparator.Equal;
-			else if(op.equals("!=")) comp.operator = Comparator.NotEqual;
-			else if(op.equals(">=")) comp.operator = Comparator.GreaterEqual;
-			else if(op.equals(">")) comp.operator = Comparator.Greater;
+			if(op.equals("<")) comp.operator = BinaryOperator.Less;
+			else if(op.equals("<=")) comp.operator = BinaryOperator.LessEqual;
+			else if(op.equals("==")) comp.operator = BinaryOperator.Equal;
+			else if(op.equals("!=")) comp.operator = BinaryOperator.NotEqual;
+			else if(op.equals(">=")) comp.operator = BinaryOperator.GreaterEqual;
+			else if(op.equals(">")) comp.operator = BinaryOperator.Greater;
 			else error("Unknown logical operator '" + op + "', this should never happen");
 			
 			comp.left = expr;
@@ -374,8 +366,8 @@ public class CruxParser extends Parser {
 		Expression expr = additiveExpr();
 		while(accept(TokenType.LAND) ||
 			   accept(TokenType.LOR)) {
-			LogicalExpression log = new LogicalExpression();
-			log.operator = lastToken.text.equals("&&")?LogicalOperator.And: LogicalOperator.Or;
+			BinaryExpression log = new BinaryExpression();
+			log.operator = lastToken.text.equals("&&")?BinaryOperator.And: BinaryOperator.Or;
 			log.left = expr;
 			log.right = additiveExpr();
 			expr = log;
@@ -387,8 +379,8 @@ public class CruxParser extends Parser {
 		Expression expr = multiplicativeExpr();
 		while(accept(TokenType.PLUS) ||
 			   accept(TokenType.MINUS)) {
-			AdditiveExpression add = new AdditiveExpression();
-			add.operator = lastToken.text.equals("+")?AdditiveOperator.Add:AdditiveOperator.Subtract;
+			BinaryExpression add = new BinaryExpression();
+			add.operator = lastToken.text.equals("+")?BinaryOperator.Add: BinaryOperator.Subtract;
 			add.left = expr;
 			add.right = multiplicativeExpr();
 			expr = add;
@@ -401,11 +393,11 @@ public class CruxParser extends Parser {
 		while(accept(TokenType.MUL) ||
 			   accept(TokenType.DIV) ||
 			   accept(TokenType.MOD)) {
-			MultiplicativeExpression mul = new MultiplicativeExpression();
+			BinaryExpression mul = new BinaryExpression();
 			String op = lastToken.text;
-			if("*".equals(op)) mul.operator = MultiplicativeOperator.Multiply;
-			else if("/".equals(op)) mul.operator = MultiplicativeOperator.Divide;
-			else if("%".equals(op)) mul.operator = MultiplicativeOperator.Modulo;
+			if("*".equals(op)) mul.operator = BinaryOperator.Multiply;
+			else if("/".equals(op)) mul.operator = BinaryOperator.Divide;
+			else if("%".equals(op)) mul.operator = BinaryOperator.Modulo;
 			else error("Unexpected multiplicative operator '" + op + "', this should never happen");
 			mul.left = expr;
 			mul.right = binaryExpr();
